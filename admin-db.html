@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verifyor Admin DB</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <p class="brand-kicker">Admin Console</p>
+          <h1 class="brand-name">Verifyor DB</h1>
+          <p class="brand-copy">Consultation de la base locale et historique des recherches.</p>
+        </div>
+
+        <nav class="nav-group" aria-label="Navigation admin">
+          <a class="nav-link active" href="/admin/db">
+            <span class="nav-icon">DB</span>
+            <span>Base locale</span>
+          </a>
+          <a class="nav-link" href="/">
+            <span class="nav-icon">VR</span>
+            <span>Retour a l'app</span>
+          </a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h2 class="topbar-title">Admin DB</h2>
+            <p class="topbar-subtitle">Historique complet des recherches et enrichissements sauvegardes.</p>
+          </div>
+          <div class="topbar-actions">
+            <button id="refreshAdminButton" class="secondary-button" type="button">Actualiser</button>
+          </div>
+        </header>
+
+        <section class="content">
+          <div class="snapshot-grid">
+            <div class="snapshot-item">
+              <p class="snapshot-kicker">Analyses</p>
+              <strong id="adminAnalysesCount" class="snapshot-value">0</strong>
+              <p class="snapshot-copy">lignes d'historique email</p>
+            </div>
+            <div class="snapshot-item">
+              <p class="snapshot-kicker">Enrichissements</p>
+              <strong id="adminEnrichmentsCount" class="snapshot-value">0</strong>
+              <p class="snapshot-copy">events Hunter/Gravatar/LinkedIn</p>
+            </div>
+            <div class="snapshot-item">
+              <p class="snapshot-kicker">Derniere activite</p>
+              <strong id="adminLastActivity" class="snapshot-value" style="font-size:1rem">-</strong>
+              <p class="snapshot-copy">timestamp le plus recent</p>
+            </div>
+          </div>
+
+          <div id="adminStatusBanner" class="status-banner visible loading">
+            <div class="status-main">
+              <span class="status-dot" aria-hidden="true"></span>
+              <p id="adminStatusText" class="status-text">Chargement des donnees...</p>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="card">
+              <div class="section-head">
+                <div>
+                  <h2 class="section-title">Historique des recherches</h2>
+                  <p class="card-subtitle">Analyses email sauvegardees dans SQLite.</p>
+                </div>
+                <span class="pill neutral">SQLite</span>
+              </div>
+              <div id="adminAnalysesList" class="info-grid"></div>
+            </article>
+
+            <article class="card">
+              <div class="section-head">
+                <div>
+                  <h2 class="section-title">Historique des enrichissements</h2>
+                  <p class="card-subtitle">Appels Hunter, Gravatar et LinkedIn matching.</p>
+                </div>
+                <span class="pill neutral">Events</span>
+              </div>
+              <div id="adminEnrichmentsList" class="info-grid"></div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin-db.js"></script>
+  </body>
+</html>

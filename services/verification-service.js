@@ -1,3 +1,5 @@
+const dns = require("node:dns/promises");
+
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const verificationCache = new Map();
 const KNOWN_PROVIDERS = new Set([
@@ -13,9 +15,19 @@ const KNOWN_PROVIDERS = new Set([
   "proton.me",
   "protonmail.com"
 ]);
+const SUPPORTED_VERIFICATION_PROVIDERS = ["auto", "local", "zerobounce", "abstract"];
 
 function getZeroBounceApiKey() {
-  return process.env.ZEROBOUNCE_API_KEY;
+  return process.env.ZEROBOUNCE_API_KEY || "";
+}
+
+function getAbstractApiKey() {
+  return process.env.ABSTRACT_API_KEY || "";
+}
+
+function getDefaultVerificationProvider() {
+  const configured = String(process.env.VERIFYOR_DEFAULT_PROVIDER || "auto").toLowerCase();
+  return SUPPORTED_VERIFICATION_PROVIDERS.includes(configured) ? configured : "auto";
 }
 
 function emailRegex() {
@@ -30,20 +42,24 @@ function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
 
-function getCached(email) {
-  const entry = verificationCache.get(email);
+function buildCacheKey(provider, email) {
+  return `${provider}:${email}`;
+}
+
+function getCached(provider, email) {
+  const entry = verificationCache.get(buildCacheKey(provider, email));
   if (!entry) return null;
 
   if (Date.now() - entry.createdAt > CACHE_TTL_MS) {
-    verificationCache.delete(email);
+    verificationCache.delete(buildCacheKey(provider, email));
     return null;
   }
 
   return entry.payload;
 }
 
-function setCached(email, payload) {
-  verificationCache.set(email, {
+function setCached(provider, email, payload) {
+  verificationCache.set(buildCacheKey(provider, email), {
     createdAt: Date.now(),
     payload
   });
@@ -167,16 +183,25 @@ function deriveSmtpValid(status, subStatus, mxFound) {
   return ["valid", "catch-all", "unknown", "do_not_mail"].includes(status);
 }
 
-function mapZeroBounceResponse(email, data) {
-  const status = String(data.status || "unknown").toLowerCase();
-  const subStatus = String(data.sub_status || "").toLowerCase();
-  const domain = data.domain || email.split("@")[1];
-  const mxFound = asBoolean(data.mx_found);
-  const smtpValid = deriveSmtpValid(status, subStatus, mxFound);
-  const disposable = status === "do_not_mail" && subStatus === "disposable";
-  const toxic = status === "do_not_mail" && subStatus === "toxic";
-  const qualityScore = toScore(data.quality_score);
-  const qualityScoreRaw = Number(data.quality_score);
+function baseVerificationShape(email, extras = {}) {
+  const domain = extras.domain || email.split("@")[1];
+  const inferredName = inferNameFromEmail(email);
+  const firstname = capitalizeWord(extras.firstname || extras.first_name || inferredName.firstname);
+  const lastname = capitalizeWord(extras.lastname || extras.last_name || inferredName.lastname);
+  const fullName = [firstname, lastname].filter(Boolean).join(" ") || "Unknown user";
+  const emailType = inferEmailType(domain);
+  const providerType = inferProviderType(domain);
+  const domainAgeEstimate = inferDomainAgeEstimate(domain);
+  const status = String(extras.status || "unknown").toLowerCase();
+  const subStatus = String(extras.sub_status || extras.status_detail || "").toLowerCase();
+  const mxFound = asBoolean(extras.mx_found);
+  const smtpValid = typeof extras.smtp_valid === "boolean"
+    ? extras.smtp_valid
+    : deriveSmtpValid(status, subStatus, mxFound);
+  const disposable = asBoolean(extras.disposable);
+  const toxic = asBoolean(extras.toxic);
+  const qualityScore = toScore(extras.quality_score);
+  const qualityScoreRaw = Number(extras.quality_score_raw ?? extras.quality_score);
   const risk = deriveRisk({
     status,
     subStatus,
@@ -186,13 +211,6 @@ function mapZeroBounceResponse(email, data) {
     toxic,
     qualityScore
   });
-  const inferredName = inferNameFromEmail(email);
-  const firstname = capitalizeWord(data.firstname || data.first_name || inferredName.firstname);
-  const lastname = capitalizeWord(data.lastname || data.last_name || inferredName.lastname);
-  const fullName = [firstname, lastname].filter(Boolean).join(" ") || "Unknown user";
-  const emailType = inferEmailType(domain);
-  const providerType = inferProviderType(domain);
-  const domainAgeEstimate = inferDomainAgeEstimate(domain);
 
   return {
     email,
@@ -205,10 +223,10 @@ function mapZeroBounceResponse(email, data) {
     toxic,
     quality_score: qualityScore,
     quality_score_raw: Number.isNaN(qualityScoreRaw) ? null : qualityScoreRaw,
-    did_you_mean: data.did_you_mean || null,
-    mx_record: data.mx_record || null,
-    provider: data.smtp_provider || null,
-    free_email: asBoolean(data.free_email),
+    did_you_mean: extras.did_you_mean || null,
+    mx_record: extras.mx_record || null,
+    provider: extras.provider || null,
+    free_email: asBoolean(extras.free_email),
     firstname,
     lastname,
     full_name: fullName,
@@ -218,15 +236,132 @@ function mapZeroBounceResponse(email, data) {
     domain_age_estimate: domainAgeEstimate,
     risk_level: risk,
     risk,
-    cached: false
+    cached: false,
+    verification_provider: extras.verification_provider || "local",
+    verification_method: extras.verification_method || extras.verification_provider || "local",
+    provider_message: extras.provider_message || null
   };
 }
 
-async function fetchEmailVerification(email) {
+function mapZeroBounceResponse(email, data) {
+  return baseVerificationShape(email, {
+    status: data.status,
+    sub_status: data.sub_status,
+    domain: data.domain || email.split("@")[1],
+    mx_found: asBoolean(data.mx_found),
+    smtp_valid: deriveSmtpValid(String(data.status || "unknown").toLowerCase(), String(data.sub_status || "").toLowerCase(), asBoolean(data.mx_found)),
+    disposable: String(data.status || "").toLowerCase() === "do_not_mail" && String(data.sub_status || "").toLowerCase() === "disposable",
+    toxic: String(data.status || "").toLowerCase() === "do_not_mail" && String(data.sub_status || "").toLowerCase() === "toxic",
+    quality_score: data.quality_score,
+    quality_score_raw: data.quality_score,
+    did_you_mean: data.did_you_mean || null,
+    mx_record: data.mx_record || null,
+    provider: data.smtp_provider || null,
+    free_email: data.free_email,
+    firstname: data.firstname || data.first_name,
+    lastname: data.lastname || data.last_name,
+    verification_provider: "zerobounce",
+    verification_method: "api"
+  });
+}
+
+function mapAbstractResponse(email, data) {
+  const deliverability = data.email_deliverability || {};
+  const quality = data.email_quality || {};
+  const mxRecords = Array.isArray(deliverability.mx_records) ? deliverability.mx_records : [];
+  const status = deliverability.status === "deliverable"
+    ? "valid"
+    : deliverability.status === "undeliverable"
+    ? "invalid"
+    : "unknown";
+  const statusDetail = deliverability.status_detail || deliverability.status || "unknown";
+  const disposable = asBoolean(quality.is_disposable_email);
+  const toxic = asBoolean(quality.is_risky) || asBoolean(quality.is_catch_all);
+
+  return baseVerificationShape(email, {
+    status,
+    sub_status: statusDetail,
+    domain: email.split("@")[1],
+    mx_found: asBoolean(deliverability.is_mx_valid),
+    smtp_valid: asBoolean(deliverability.is_smtp_valid),
+    disposable,
+    toxic,
+    quality_score: quality.score,
+    quality_score_raw: quality.score,
+    did_you_mean: null,
+    mx_record: mxRecords[0] || null,
+    provider: "Abstract",
+    free_email: quality.is_free_email,
+    verification_provider: "abstract",
+    verification_method: "api",
+    provider_message: quality.date_last_breached ? `Derniere fuite connue: ${quality.date_last_breached}` : null
+  });
+}
+
+async function resolveMx(domain) {
+  try {
+    const records = await dns.resolveMx(domain);
+    return records
+      .slice()
+      .sort((left, right) => left.priority - right.priority)
+      .map((record) => record.exchange);
+  } catch (error) {
+    return [];
+  }
+}
+
+async function resolveAnyHost(domain) {
+  try {
+    const [ipv4, ipv6] = await Promise.allSettled([dns.resolve4(domain), dns.resolve6(domain)]);
+    return {
+      hasAddress:
+        (ipv4.status === "fulfilled" && ipv4.value.length > 0) ||
+        (ipv6.status === "fulfilled" && ipv6.value.length > 0)
+    };
+  } catch (error) {
+    return { hasAddress: false };
+  }
+}
+
+async function fetchLocalVerification(email) {
+  const domain = email.split("@")[1];
+  const mxRecords = await resolveMx(domain);
+  const addressInfo = await resolveAnyHost(domain);
+  const hasMx = mxRecords.length > 0;
+  const hasResolvableDomain = addressInfo.hasAddress;
+  const domainKnown = KNOWN_PROVIDERS.has(domain);
+  const localStatus = hasMx ? "valid" : hasResolvableDomain ? "unknown" : "invalid";
+  const subStatus = hasMx ? "dns_mx_confirmed" : hasResolvableDomain ? "dns_only_no_mx" : "domain_unresolvable";
+  const scoreSeed = localStatus === "valid" ? 72 : hasResolvableDomain ? 42 : 5;
+
+  return baseVerificationShape(email, {
+    status: localStatus,
+    sub_status: subStatus,
+    domain,
+    mx_found: hasMx,
+    smtp_valid: false,
+    disposable: false,
+    toxic: false,
+    quality_score: domainKnown ? scoreSeed + 10 : scoreSeed,
+    quality_score_raw: null,
+    mx_record: mxRecords[0] || null,
+    provider: "Local DNS/MX",
+    free_email: domainKnown,
+    verification_provider: "local",
+    verification_method: "dns_mx",
+    provider_message: hasMx
+      ? `Verification DNS/MX locale reussie avec ${mxRecords.length} enregistrement(s).`
+      : hasResolvableDomain
+      ? "Le domaine repond au DNS, mais aucun MX n'a ete trouve."
+      : "Le domaine ne repond ni en MX ni en resolution d'adresse."
+  });
+}
+
+async function fetchZeroBounceVerification(email) {
   const apiKey = getZeroBounceApiKey();
 
   if (!apiKey) {
-    throw new Error("ZEROBOUNCE_API_KEY is missing. Add it to your environment before starting the server.");
+    throw new Error("ZEROBOUNCE_API_KEY is missing.");
   }
 
   const url = new URL("https://api.zerobounce.net/v2/validate");
@@ -235,9 +370,7 @@ async function fetchEmailVerification(email) {
   url.searchParams.set("timeout", "10");
 
   const response = await fetch(url, {
-    headers: {
-      Accept: "application/json"
-    },
+    headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(15000)
   });
 
@@ -247,7 +380,6 @@ async function fetchEmailVerification(email) {
   }
 
   const data = await response.json();
-
   if (data.error) {
     throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error));
   }
@@ -255,8 +387,33 @@ async function fetchEmailVerification(email) {
   return mapZeroBounceResponse(email, data);
 }
 
+async function fetchAbstractVerification(email) {
+  const apiKey = getAbstractApiKey();
+
+  if (!apiKey) {
+    throw new Error("ABSTRACT_API_KEY is missing.");
+  }
+
+  const url = new URL("https://emailreputation.abstractapi.com/v1/");
+  url.searchParams.set("api_key", apiKey);
+  url.searchParams.set("email", email);
+
+  const response = await fetch(url, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(15000)
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Abstract request failed with ${response.status}: ${text}`);
+  }
+
+  const data = await response.json();
+  return mapAbstractResponse(email, data);
+}
+
 function buildFrontendPayload(verification) {
-  const syntax = verification.status !== "invalid";
+  const syntax = verification.status !== "invalid" || verification.verification_provider === "local";
   const useFallbackScore = verification.quality_score === 0 && verification.status === "valid";
   const computedScore = computeFallbackScore({
     status: verification.status,
@@ -275,7 +432,7 @@ function buildFrontendPayload(verification) {
     smtp: verification.smtp_valid,
     score,
     computedScore,
-    score_source: useFallbackScore ? "fallback" : "zerobounce",
+    score_source: useFallbackScore ? "fallback" : verification.verification_provider,
     suggestion: verification.did_you_mean,
     deliverability: verification.status,
     deliverabilityDetail: verification.sub_status || verification.status,
@@ -285,6 +442,50 @@ function buildFrontendPayload(verification) {
   };
 }
 
+function normalizeProviderSelection(provider) {
+  const normalized = String(provider || "").toLowerCase();
+  return SUPPORTED_VERIFICATION_PROVIDERS.includes(normalized)
+    ? normalized
+    : getDefaultVerificationProvider();
+}
+
+async function fetchEmailVerification(email, requestedProvider = getDefaultVerificationProvider()) {
+  const provider = normalizeProviderSelection(requestedProvider);
+
+  if (provider === "local") {
+    return fetchLocalVerification(email);
+  }
+
+  if (provider === "zerobounce") {
+    return fetchZeroBounceVerification(email);
+  }
+
+  if (provider === "abstract") {
+    return fetchAbstractVerification(email);
+  }
+
+  const attempts = [
+    { provider: "zerobounce", run: () => fetchZeroBounceVerification(email) },
+    { provider: "abstract", run: () => fetchAbstractVerification(email) },
+    { provider: "local", run: () => fetchLocalVerification(email) }
+  ];
+  const failures = [];
+
+  for (const attempt of attempts) {
+    try {
+      return await attempt.run();
+    } catch (error) {
+      failures.push(`${attempt.provider}: ${error.message}`);
+    }
+  }
+
+  throw new Error(failures.join(" | "));
+}
+
+function getSupportedVerificationProviders() {
+  return SUPPORTED_VERIFICATION_PROVIDERS.slice();
+}
+
 module.exports = {
   asBoolean,
   buildFrontendPayload,
@@ -292,12 +493,18 @@ module.exports = {
   clampScore,
   clearCache,
   computeFallbackScore,
+  fetchAbstractVerification,
   fetchEmailVerification,
+  fetchLocalVerification,
+  fetchZeroBounceVerification,
   getCached,
+  getDefaultVerificationProvider,
+  getSupportedVerificationProviders,
   inferNameFromEmail,
   isValidEmail,
   mapZeroBounceResponse,
   normalizeEmail,
+  normalizeProviderSelection,
   setCached,
   toScore
 };

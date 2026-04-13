@@ -264,7 +264,7 @@ test("GET /api/verify returns mapped verification data", async () => {
   });
   const response = await invokeApp(app, {
     method: "GET",
-    url: "/api/verify?email=alice@example.com"
+    url: "/api/verify?email=alice@example.com&provider=local"
   });
 
   assert.equal(response.statusCode, 200);
@@ -273,6 +273,7 @@ test("GET /api/verify returns mapped verification data", async () => {
   assert.equal(response.json.mx, true);
   assert.equal(response.json.smtp, true);
   assert.equal(response.json.full_name, "Alice Martin");
+  assert.equal(response.json.verification_provider, "local");
 
   clearCache();
   clearAllData();
@@ -313,7 +314,7 @@ test("dashboard endpoints expose persisted analyses", async () => {
 
   await invokeApp(app, {
     method: "GET",
-    url: "/api/verify?email=pat@example.com"
+    url: "/api/verify?email=pat@example.com&provider=local"
   });
 
   const analysesResponse = await invokeApp(app, {
@@ -332,6 +333,62 @@ test("dashboard endpoints expose persisted analyses", async () => {
   assert.equal(summaryResponse.statusCode, 200);
   assert.equal(summaryResponse.json.analyses_count >= 1, true);
   assert.equal(summaryResponse.json.valid_count >= 1, true);
+  assert.equal(summaryResponse.json.local_count >= 1, true);
+
+  clearCache();
+  clearAllData();
+});
+
+test("admin and providers endpoints are exposed", async () => {
+  clearCache();
+  clearAllData();
+
+  const app = createApp({
+    verificationFetcher: async (email, provider) => ({
+      email,
+      status: "valid",
+      sub_status: "",
+      domain: "example.com",
+      mx_found: true,
+      smtp_valid: provider === "local" ? false : true,
+      disposable: false,
+      toxic: false,
+      quality_score: 60,
+      quality_score_raw: 60,
+      provider: "Stub",
+      verification_provider: provider || "local",
+      verification_method: provider || "local"
+    })
+  });
+
+  await invokeApp(app, {
+    method: "GET",
+    url: "/api/verify?email=ops@example.com&provider=local"
+  });
+
+  const providersResponse = await invokeApp(app, {
+    method: "GET",
+    url: "/api/verification/providers"
+  });
+  const adminHistoryResponse = await invokeApp(app, {
+    method: "GET",
+    url: "/api/admin/history?limit=20"
+  });
+  const adminPageResponse = await invokeApp(app, {
+    method: "GET",
+    url: "/admin/db"
+  });
+
+  assert.equal(providersResponse.statusCode, 200);
+  assert.equal(Array.isArray(providersResponse.json.providers), true);
+  assert.equal(providersResponse.json.providers.includes("local"), true);
+
+  assert.equal(adminHistoryResponse.statusCode, 200);
+  assert.equal(Array.isArray(adminHistoryResponse.json.analyses), true);
+  assert.equal(adminHistoryResponse.json.analyses[0].email, "ops@example.com");
+
+  assert.equal(adminPageResponse.statusCode, 200);
+  assert.match(adminPageResponse.body.toString("utf8"), /Verifyor DB/);
 
   clearCache();
   clearAllData();

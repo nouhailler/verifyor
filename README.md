@@ -12,6 +12,7 @@ L'application prend une adresse email, interroge ZeroBounce cote serveur, puis a
 - SQLite locale via `node:sqlite`
 - frontend statique sans framework
 - ZeroBounce pour la verification email
+- Abstract pour la verification email alternative
 - Hunter pour l'intelligence B2B
 - Gravatar pour les profils publics
 
@@ -36,6 +37,7 @@ Prerequis:
 - une cle API ZeroBounce
 - optionnel: une cle API Hunter
 - optionnel: une cle API Gravatar
+- optionnel: une cle API Abstract
 
 Installation locale:
 
@@ -51,6 +53,8 @@ PORT=3000
 ZEROBOUNCE_API_KEY=your_zerobounce_api_key
 HUNTER_API_KEY=test-api-key
 GRAVATAR_API_KEY=
+ABSTRACT_API_KEY=
+VERIFYOR_DEFAULT_PROVIDER=auto
 ```
 
 ## Lancement
@@ -85,9 +89,17 @@ et des endpoints d'intelligence:
 ```http
 GET  /api/analyses?limit=5
 GET  /api/dashboard/summary
+GET  /api/verification/providers
+GET  /api/admin/history?limit=100
 POST /api/intelligence/hunter
 POST /api/intelligence/gravatar
 POST /api/intelligence/linkedin-match
+```
+
+Page d'administration:
+
+```text
+/admin/db
 ```
 
 Exemples de champs renvoyes:
@@ -110,6 +122,9 @@ Exemples de champs renvoyes:
 
 - validation email cote client et cote serveur
 - verification reelle via ZeroBounce
+- verification alternative via Abstract
+- verification locale DNS/MX sans API externe
+- mode `auto` qui essaie ZeroBounce, puis Abstract, puis fallback local
 - cache serveur en memoire sur 5 minutes
 - suggestion de correction si ZeroBounce renvoie `did_you_mean`
 - sauvegarde des analyses en SQLite et affichage sur le dashboard
@@ -119,6 +134,7 @@ Exemples de champs renvoyes:
 - bouton `B2B email intelligence` alimente par Hunter
 - bouton `Gravatar lookup` pour avatar et profil public
 - bouton `LinkedIn matching` base sur des signaux publics disponibles
+- page `/admin/db` pour consulter la base et l'historique des recherches
 - tests backend via `node --test`
 
 ## Limites actuelles
@@ -126,6 +142,7 @@ Exemples de champs renvoyes:
 - pas d'authentification
 - plusieurs enrichissements sont heuristiques et pas garantis
 - le matching LinkedIn n'utilise pas une API officielle de recherche arbitraire
+- le mode local DNS/MX ne remplace pas une verification SMTP ou une reputation provider
 
 ## Securite
 

@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const {
   clearAllData,
   getDashboardSummary,
+  listAdminHistory,
   listRecentAnalyses,
   saveAnalysis,
   saveEnrichment
@@ -23,11 +24,14 @@ const {
   buildFrontendPayload,
   clearCache,
   fetchEmailVerification,
+  getDefaultVerificationProvider,
   getCached,
+  getSupportedVerificationProviders,
   inferNameFromEmail,
   isValidEmail,
   mapZeroBounceResponse,
   normalizeEmail,
+  normalizeProviderSelection,
   setCached,
   toScore
 } = require("./services/verification-service");
@@ -50,6 +54,7 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
 
   app.get("/api/verify", async (req, res) => {
     const email = normalizeEmail(req.query.email);
+    const provider = normalizeProviderSelection(req.query.provider);
 
     if (!email) {
       return res.status(400).json({ error: "Missing required query parameter: email" });
@@ -59,7 +64,7 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
-    const cached = getCached(email);
+    const cached = getCached(provider, email);
     if (cached) {
       return res.json({
         ...cached,
@@ -68,9 +73,13 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
     }
 
     try {
-      const verification = await verificationFetcher(email);
-      const payload = buildFrontendPayload(verification);
-      setCached(email, payload);
+      const verification = await verificationFetcher(email, provider);
+      const payload = buildFrontendPayload({
+        verification_provider: provider,
+        verification_method: provider === "local" ? "dns_mx" : "api",
+        ...verification
+      });
+      setCached(provider, email, payload);
       saveAnalysis(payload);
       return res.json(payload);
     } catch (error) {
@@ -91,6 +100,18 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
 
   app.get("/api/dashboard/summary", (req, res) => {
     return res.json(getDashboardSummary());
+  });
+
+  app.get("/api/verification/providers", (req, res) => {
+    return res.json({
+      default_provider: getDefaultVerificationProvider(),
+      providers: getSupportedVerificationProviders()
+    });
+  });
+
+  app.get("/api/admin/history", (req, res) => {
+    const limit = safeNumber(req.query.limit, 100);
+    return res.json(listAdminHistory(limit));
   });
 
   app.post("/api/report/pdf", (req, res) => {
@@ -162,6 +183,10 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
         details: error.message
       });
     }
+  });
+
+  app.get("/admin/db", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "admin-db.html"));
   });
 
   app.get("*", (req, res) => {

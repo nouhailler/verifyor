@@ -34,6 +34,7 @@ Le backend:
 
 - charge la config via `dotenv`
 - attend `PORT`, `ZEROBOUNCE_API_KEY`, et optionnellement `HUNTER_API_KEY` / `GRAVATAR_API_KEY`
+- attend `PORT`, `ZEROBOUNCE_API_KEY`, `ABSTRACT_API_KEY`, et optionnellement `HUNTER_API_KEY` / `GRAVATAR_API_KEY`
 - appelle `https://api.zerobounce.net/v2/validate`
 - met en cache les reponses 5 minutes en memoire (`Map`)
 - normalise et valide l'email cote serveur
@@ -64,13 +65,14 @@ Il sait aussi:
 - interroger Hunter pour l'intelligence B2B
 - interroger Gravatar pour les profils publics
 - produire un matching LinkedIn pragmatique a partir de signaux publics
+- choisir entre plusieurs strategies de verification: `auto`, `local`, `zerobounce`, `abstract`
 
 ### Frontend
 
 Le frontend est une single page statique assez riche:
 
 - saisie et validation live de l'email
-- appel de `/api/verify`
+- appel de `/api/verify` avec choix du provider
 - historique recent charge depuis SQLite
 - affichage detaille du resultat
 - suggestion de correction si `did_you_mean`
@@ -85,6 +87,13 @@ Le frontend est une single page statique assez riche:
   - module `B2B email intelligence`
   - module `Gravatar lookup`
   - module `LinkedIn matching`
+  - selecteur de provider de verification
+
+Une page admin `/admin/db` permet de consulter directement depuis le navigateur:
+
+- les analyses sauvegardees
+- les enrichissements sauvegardes
+- un historique des recherches passees
 
 Le bouton PDF est maintenant branche au backend et telecharge un vrai fichier `.pdf`.
 
@@ -130,6 +139,7 @@ Plusieurs enrichissements sont heuristiques et non issus d'une vraie source d'in
 - deduction du nom depuis le local-part de l'email
 - score fallback
 - matching LinkedIn non officiel, construit a partir de Hunter/Gravatar/signaux publics
+- mode local base sur DNS/MX uniquement, sans SMTP ni reputation reseau
 
 Ces choix sont utiles pour le MVP mais doivent etre consideres comme approximatifs.
 
@@ -177,12 +187,13 @@ Cela ne prouve pas que l'application est en panne chez toi: cela bloque seulemen
 ## Comment relancer rapidement
 
 1. Verifier que `ZEROBOUNCE_API_KEY` est correcte dans `.env`
-2. Optionnel: renseigner `HUNTER_API_KEY` et `GRAVATAR_API_KEY`
+2. Optionnel: renseigner `ABSTRACT_API_KEY`, `HUNTER_API_KEY` et `GRAVATAR_API_KEY`
 3. Lancer `npm start`
 4. Ouvrir `http://localhost:3000`
-5. Tester une adresse email depuis l'interface
+5. Tester une adresse email depuis l'interface avec le provider voulu
 6. Utiliser les modules B2B / Gravatar / LinkedIn matching
-7. Lancer `npm test` pour verifier le backend
+7. Ouvrir `/admin/db` pour consulter l'historique
+8. Lancer `npm test` pour verifier le backend
 
 ## Prochaines etapes logiques
 
@@ -197,4 +208,4 @@ Si l'objectif est de faire evoluer Verifyor au-dela du MVP, les priorites raison
 
 ## Resume court
 
-Verifyor est aujourd'hui un MVP fonctionnel de verification email branche a ZeroBounce, avec persistence SQLite locale, export PDF, base de tests backend, et trois modules d'intelligence additionnels: Hunter-like B2B, Gravatar et LinkedIn matching pragmatique. Les principaux manques sont maintenant surtout l'auth, des tests plus larges, et une eventuelle integration LinkedIn officielle si tu veux un matching garanti par OAuth.
+Verifyor est aujourd'hui un MVP fonctionnel de verification email multi-solution, avec ZeroBounce, Abstract, fallback local DNS/MX, persistence SQLite locale, export PDF, page `/admin/db`, base de tests backend, et trois modules d'intelligence additionnels: Hunter-like B2B, Gravatar et LinkedIn matching pragmatique. Les principaux manques sont maintenant surtout l'auth, des tests plus larges, et une eventuelle integration LinkedIn officielle si tu veux un matching garanti par OAuth.

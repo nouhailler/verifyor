@@ -12,6 +12,7 @@
 
   const elements = {
     emailInput: document.getElementById("emailInput"),
+    providerSelect: document.getElementById("providerSelect"),
     analyzeButton: document.getElementById("analyzeButton"),
     inputMessage: document.getElementById("inputMessage"),
     typoBanner: document.getElementById("typoBanner"),
@@ -46,6 +47,7 @@
     summaryAnalyses: document.getElementById("summaryAnalyses"),
     summaryValid: document.getElementById("summaryValid"),
     summaryFlagged: document.getElementById("summaryFlagged"),
+    summaryLocal: document.getElementById("summaryLocal"),
     hunterButton: document.getElementById("hunterButton"),
     hunterInsights: document.getElementById("hunterInsights"),
     gravatarButton: document.getElementById("gravatarButton"),
@@ -151,7 +153,7 @@
       button.innerHTML = `
         <span class="history-primary">
           <span class="history-email">${item.email}</span>
-          <span class="history-meta">${formatStatus(item.status)} | score ${item.score ?? "-"} | ${formatDateTime(item.created_at)}</span>
+          <span class="history-meta">${formatStatus(item.status)} | provider ${item.verification_provider || "-"} | score ${item.score ?? "-"} | ${formatDateTime(item.created_at)}</span>
         </span>
         <span class="status ${classForLevel(item.risk)}">${item.risk || "n/a"}</span>
       `;
@@ -168,6 +170,7 @@
     elements.summaryAnalyses.textContent = String(summary.analyses_count || 0);
     elements.summaryValid.textContent = String(summary.valid_count || 0);
     elements.summaryFlagged.textContent = String(summary.flagged_count || 0);
+    elements.summaryLocal.textContent = String(summary.local_count || 0);
   }
 
   function escapeHtml(value) {
@@ -635,13 +638,14 @@
         ? `Invalid email: ${result.email}`
         : result.cached
         ? `Analyse chargee depuis le cache serveur 5 minutes pour ${result.email}.`
-        : `Analyse terminee pour ${result.email}. ${result.full_name || "Unknown user"}, email ${result.email_type}, statut ${statusLabel(result.status)}, score ${result.score}/100, risque ${result.risk}.`,
+        : `Analyse terminee pour ${result.email}. Source ${result.verification_provider || "unknown"}, ${result.full_name || "Unknown user"}, email ${result.email_type}, statut ${statusLabel(result.status)}, score ${result.score}/100, risque ${result.risk}.`,
       false
     );
   }
 
   async function verifyEmail(email) {
-    const response = await fetch(`/api/verify?email=${encodeURIComponent(email)}`, {
+    const provider = elements.providerSelect.value || "auto";
+    const response = await fetch(`/api/verify?email=${encodeURIComponent(email)}&provider=${encodeURIComponent(provider)}`, {
       method: "GET",
       headers: {
         Accept: "application/json"
@@ -655,6 +659,23 @@
     }
 
     return payload;
+  }
+
+  async function loadProviders() {
+    try {
+      const response = await fetch("/api/verification/providers", {
+        headers: {
+          Accept: "application/json"
+        }
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) return;
+      if (payload.default_provider) {
+        elements.providerSelect.value = payload.default_provider;
+      }
+    } catch (error) {
+      // Keep static options if provider metadata cannot be loaded.
+    }
   }
 
   async function fetchRecentAnalyses() {
@@ -1011,12 +1032,13 @@
     if (type === "search") {
       return {
         title: "Comment utiliser cette page",
-        lead: "Cette zone sert a verifier une adresse email en interrogeant le backend, qui lui-meme appelle un fournisseur de verification reel.",
+        lead: "Cette zone sert a verifier une adresse email via plusieurs strategies: local DNS/MX, ZeroBounce, Abstract ou mode automatique.",
         blocks: [
           { title: "Champ email", copy: "Saisissez ici l'adresse a verifier. Le bouton n'est actif que si le format est correct." },
-          { title: "Analyser", copy: "Un clic envoie une requete au serveur local sur /api/verify. La cle ZeroBounce reste cote serveur." },
+          { title: "Provider", copy: "Vous pouvez forcer le mode local, ZeroBounce, Abstract ou laisser le serveur choisir automatiquement la meilleure option disponible." },
+          { title: "Analyser", copy: "Un clic envoie une requete au serveur local sur /api/verify. Les cles externes restent cote serveur." },
           { title: "Banniere jaune", copy: "Si ZeroBounce retourne une suggestion de correction, elle s'affiche ici pour etre appliquee en un clic." },
-          { title: "Historique", copy: "Les 5 dernieres recherches de votre session restent visibles pour relancer rapidement une verification." }
+          { title: "Historique", copy: "Les 5 dernieres analyses sauvegardees en base restent visibles pour relancer rapidement une verification." }
         ]
       };
     }
@@ -1160,6 +1182,7 @@
     button.addEventListener("click", () => openHelp(button.dataset.help));
   });
 
+  loadProviders();
   refreshDashboardSnapshot();
   updateInputState();
 })();

@@ -72,6 +72,12 @@
                     aria-label="Adresse email"
                   />
                 </div>
+                <select id="providerSelect" class="search-input" aria-label="Provider de verification">
+                  <option value="auto">Auto provider</option>
+                  <option value="local">Local DNS/MX only</option>
+                  <option value="zerobounce">ZeroBounce</option>
+                  <option value="abstract">Abstract</option>
+                </select>
                 <button id="analyzeButton" class="analyze-button" type="button">
                   <span class="button-icon">SHD</span>
                   <span class="button-spinner" aria-hidden="true"></span>
@@ -102,6 +108,11 @@
                   <p class="snapshot-kicker">A revoir</p>
                   <strong id="summaryFlagged" class="snapshot-value">0</strong>
                   <p class="snapshot-copy">risque medium ou high</p>
+                </div>
+                <div class="snapshot-item">
+                  <p class="snapshot-kicker">Local DNS/MX</p>
+                  <strong id="summaryLocal" class="snapshot-value">0</strong>
+                  <p class="snapshot-copy">analyses sans API externe</p>
                 </div>
               </div>
 

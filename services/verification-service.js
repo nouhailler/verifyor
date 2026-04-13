@@ -239,6 +239,8 @@ function baseVerificationShape(email, extras = {}) {
     cached: false,
     verification_provider: extras.verification_provider || "local",
     verification_method: extras.verification_method || extras.verification_provider || "local",
+    requested_provider: extras.requested_provider || extras.verification_provider || "local",
+    is_local_fallback: asBoolean(extras.is_local_fallback),
     provider_message: extras.provider_message || null
   };
 }
@@ -349,6 +351,8 @@ async function fetchLocalVerification(email) {
     free_email: domainKnown,
     verification_provider: "local",
     verification_method: "dns_mx",
+    requested_provider: "local",
+    is_local_fallback: false,
     provider_message: hasMx
       ? `Verification DNS/MX locale reussie avec ${mxRecords.length} enregistrement(s).`
       : hasResolvableDomain
@@ -473,7 +477,21 @@ async function fetchEmailVerification(email, requestedProvider = getDefaultVerif
 
   for (const attempt of attempts) {
     try {
-      return await attempt.run();
+      const result = await attempt.run();
+      if (attempt.provider === "local") {
+        return {
+          ...result,
+          requested_provider: "auto",
+          is_local_fallback: true,
+          provider_message: `Fallback local active. Aucune API payante n'a ete utilisee. ${result.provider_message || ""}`.trim()
+        };
+      }
+
+      return {
+        ...result,
+        requested_provider: "auto",
+        is_local_fallback: false
+      };
     } catch (error) {
       failures.push(`${attempt.provider}: ${error.message}`);
     }

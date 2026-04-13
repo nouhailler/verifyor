@@ -77,6 +77,8 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
       const payload = buildFrontendPayload({
         verification_provider: provider,
         verification_method: provider === "local" ? "dns_mx" : "api",
+        requested_provider: provider,
+        is_local_fallback: false,
         ...verification
       });
       setCached(provider, email, payload);

@@ -236,6 +236,22 @@
   function renderTechnicalList(result) {
     const items = [
       {
+        icon: "SRC",
+        title: "Source de verification",
+        copy: result.is_local_fallback
+          ? "Fallback local DNS/MX active."
+          : result.verification_provider === "local"
+          ? "Verification locale DNS/MX."
+          : `Verification via ${result.verification_provider || "provider inconnu"}.`,
+        detail: result.is_local_fallback
+          ? "Aucune API payante n'a ete utilisee pour cette analyse."
+          : result.provider_message || `Provider demande: ${result.requested_provider || result.verification_provider || "-"}`,
+        status: {
+          label: result.is_local_fallback ? "Local fallback" : (result.verification_provider || "unknown"),
+          kind: result.is_local_fallback ? "warning" : "success"
+        }
+      },
+      {
         icon: "ID",
         title: "Identite detectee",
         copy: result.full_name || "Unknown user",
@@ -338,6 +354,10 @@
   }
 
   function scoreExplanation(result) {
+    if (result.is_local_fallback) {
+      return "Le mode automatique est tombe en fallback local DNS/MX. Aucune API payante n'a ete utilisee, donc le score reste plus heuristique.";
+    }
+
     if (result.status === "invalid") {
       return "L'adresse est invalide. Ici, le score n'est plus le sujet principal: c'est le statut qui compte.";
     }
@@ -385,6 +405,14 @@
       { label: "Utilisateur", copy: result.full_name || "Unknown user", value: result.email_type === "professional" ? "Pro" : "Perso" }
     ];
 
+    if (result.is_local_fallback) {
+      factors.unshift({
+        label: "Mode",
+        copy: "Fallback local",
+        value: "No paid API"
+      });
+    }
+
     elements.trustFactors.innerHTML = factors
       .map(
         (factor) => `
@@ -408,7 +436,9 @@
     elements.aiProbability.textContent = `${score.toFixed(1)}%`;
     elements.aiProbabilitySmall.textContent = `${score.toFixed(1)}%`;
     elements.aiSummary.textContent =
-      result.status === "invalid"
+      result.is_local_fallback
+        ? "Analyse locale DNS/MX uniquement. Les signaux SMTP et reputation provider ne sont pas disponibles."
+        : result.status === "invalid"
         ? "ZeroBounce marque cette adresse comme invalide."
         : result.score === 0
         ? "ZeroBounce renvoie un score nul ou inexploitable. L'adresse peut tout de meme etre valide si le statut principal est positif."
@@ -438,7 +468,7 @@
           <div>
             <p class="item-title">Score de confiance</p>
             <p class="item-copy">Score affiche: ${result.score}/100${result.score_source === "fallback" ? " (estimated score)" : ""}.</p>
-            <p class="item-detail">Source: ${result.score_source === "fallback" ? "Calcul estime" : "ZeroBounce"}${result.quality_score_raw !== null ? ` | valeur brute: ${result.quality_score_raw}` : ""}</p>
+            <p class="item-detail">Source: ${result.is_local_fallback ? "Fallback local DNS/MX (aucune API payante)" : result.score_source === "fallback" ? "Calcul estime" : (result.verification_provider || "provider inconnu")}${result.quality_score_raw !== null ? ` | valeur brute: ${result.quality_score_raw}` : ""}</p>
           </div>
         </div>
       </div>
@@ -520,6 +550,17 @@
       </div>
       <div class="info-item">
         <div class="item-main">
+          <span class="item-icon">SRC</span>
+          <div>
+            <p class="item-title">Source utilisee</p>
+            <p class="item-copy">${result.is_local_fallback ? "Fallback local DNS/MX" : (result.verification_provider || "unknown")}</p>
+            <p class="item-detail">${result.is_local_fallback ? "Le mode auto a degrade vers le moteur local. Aucune API payante n'a ete utilisee." : (result.provider_message || `Provider demande: ${result.requested_provider || result.verification_provider || "-"}`)}</p>
+          </div>
+        </div>
+        <span class="status ${result.is_local_fallback ? "warning" : "success"}">${result.is_local_fallback ? "Fallback" : "Source"}</span>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
           <span class="item-icon">RSK</span>
           <div>
             <p class="item-title">Niveau de risque</p>
@@ -595,6 +636,8 @@
     elements.recommendationText.textContent =
       result.status === "invalid"
         ? "ZeroBounce signale une adresse invalide. Elle doit etre corrigee avant tout usage."
+        : result.is_local_fallback
+        ? "Le mode automatique a bascule sur le moteur local DNS/MX. L'analyse est utile, mais plus prudente car aucune API payante n'a ete interrogee."
         : result.risk === "low"
         ? "Tous les signaux essentiels sont au vert. Vous pouvez utiliser cette adresse avec un bon niveau de confiance."
         : result.risk === "medium"
@@ -636,6 +679,8 @@
       "success",
       result.status === "invalid"
         ? `Invalid email: ${result.email}`
+        : result.is_local_fallback
+        ? `Fallback local active pour ${result.email}. Aucune API payante n'a ete utilisee. ${result.provider_message || ""}`.trim()
         : result.cached
         ? `Analyse chargee depuis le cache serveur 5 minutes pour ${result.email}.`
         : `Analyse terminee pour ${result.email}. Source ${result.verification_provider || "unknown"}, ${result.full_name || "Unknown user"}, email ${result.email_type}, statut ${statusLabel(result.status)}, score ${result.score}/100, risque ${result.risk}.`,

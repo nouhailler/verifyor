@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verifyor | Verification unique</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --font-display: "Manrope", sans-serif;
+        --font-body: "Inter", sans-serif;
+        --color-surface: #f7f9ff;
+        --color-surface-low: #eef4ff;
+        --color-surface-lowest: #ffffff;
+        --color-surface-highest: #d2e4fb;
+        --color-primary: #041627;
+        --color-primary-container: #1a2b3c;
+        --color-on-surface: #0b1d2d;
+        --color-on-surface-variant: #44474c;
+        --color-success: #006d37;
+        --color-error: #ba1a1a;
+        --color-warning-bg: #f0f4e8;
+        --color-warning-text: #4f5e30;
+        --color-orange: #b35c00;
+        --color-orange-bg: #fff2e4;
+        --color-danger-bg: #ffe9e7;
+        --color-success-bg: #e8f5ee;
+        --shadow-ambient: 0 20px 40px rgba(11, 29, 45, 0.06);
+        --radius-xl: 0.75rem;
+        --glass-blur: blur(24px);
+        --ghost-border: rgba(68, 71, 76, 0.2);
+        --ring-length: 282.743;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--font-body);
+        color: var(--color-on-surface);
+        background:
+          radial-gradient(circle at top left, rgba(210, 228, 251, 0.78), transparent 30%),
+          linear-gradient(180deg, #fbfcff 0%, var(--color-surface) 100%);
+      }
+
+      button,
+      input,
+      textarea,
+      code,
+      pre {
+        font: inherit;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 272px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 0;
+        align-self: start;
+        min-height: 100vh;
+        padding: 2rem 1.25rem;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0)),
+          var(--color-surface);
+      }
+
+      .brand {
+        margin-bottom: 2rem;
+      }
+
+      .brand-kicker {
+        margin: 0 0 0.35rem;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--color-on-surface-variant);
+      }
+
+      .brand-name {
+        margin: 0 0 0.4rem;
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .brand-copy {
+        margin: 0;
+        color: var(--color-on-surface-variant);
+        font-size: 0.9rem;
+      }
+
+      .nav-group {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        padding: 0.95rem 1rem;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--color-on-surface-variant);
+        transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+      }
+
+      .nav-link:hover {
+        background: rgba(210, 228, 251, 0.45);
+        color: var(--color-on-surface);
+      }
+
+      .nav-link.active {
+        background: var(--color-surface-highest);
+        color: var(--color-primary);
+        box-shadow: inset 0 1px 2px rgba(4, 22, 39, 0.08);
+        transform: translateY(1px);
+      }
+
+      .nav-icon {
+        width: 1.9rem;
+        height: 1.9rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.8rem;
+        background: rgba(255, 255, 255, 0.56);
+        font-size: 0.67rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .main {
+        padding: 1.5rem 1.5rem 2rem 0;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-radius: 1.25rem;
+        background: rgba(255, 255, 255, 0.58);
+        backdrop-filter: var(--glass-blur);
+      }
+
+      .topbar-title {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1.1rem;
+        font-weight: 800;
+      }
+
+      .topbar-subtitle {
+        margin: 0.2rem 0 0;
+        color: var(--color-on-surface-variant);
+        font-size: 0.88rem;
+      }
+
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .action-chip {
+        width: 2.5rem;
+        height: 2.5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 999px;
+        color: var(--color-primary);
+        background: rgba(255, 255, 255, 0.85);
+      }
+
+      .content {
+        display: grid;
+        gap: 1.5rem;
+        padding: 1.5rem;
+        background: var(--color-surface-low);
+        border-radius: 1.75rem;
+      }
+
+      .hero {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .hero-title {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: clamp(2rem, 3vw, 3rem);
+        line-height: 0.98;
+      }
+
+      .hero-copy {
+        margin: 0;
+        max-width: 46rem;
+        color: var(--color-on-surface-variant);
+      }
+
+      .search-panel {
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .search-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.85rem;
+        padding: 0.85rem;
+        border-radius: 1rem;
+        background: var(--color-surface-lowest);
+        box-shadow: var(--shadow-ambient);
+      }
+
+      .field-wrap {
+        position: relative;
+      }
+
+      .field-prefix {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.8rem;
+        background: rgba(210, 228, 251, 0.5);
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: var(--color-primary);
+      }
+
+      .search-input {
+        width: 100%;
+        min-height: 3.75rem;
+        padding: 0 1rem 0 3.7rem;
+        border: 1px solid var(--ghost-border);
+        border-radius: var(--radius-xl);
+        color: var(--color-on-surface);
+        background: rgba(247, 249, 255, 0.8);
+        outline: none;
+        transition: border-color 160ms ease, background-color 160ms ease;
+      }
+
+      .search-input:focus {
+        border-color: rgba(26, 43, 60, 0.35);
+      }
+
+      .search-input[aria-invalid="true"] {
+        border-color: rgba(186, 26, 26, 0.4);
+        background: #fff7f6;
+      }
+
+      .analyze-button,
+      .secondary-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.65rem;
+        min-height: 3.75rem;
+        min-width: 11rem;
+        padding: 0 1.2rem;
+        border: 0;
+        border-radius: var(--radius-xl);
+        font-weight: 800;
+      }
+
+      .analyze-button {
+        color: #fff;
+        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-container));
+      }
+
+      .analyze-button:disabled,
+      .secondary-button:disabled {
+        opacity: 0.48;
+        cursor: not-allowed;
+      }
+
+      .secondary-button {
+        color: var(--color-primary);
+        background: rgba(210, 228, 251, 0.68);
+      }
+
+      .button-icon {
+        width: 1.7rem;
+        height: 1.7rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        font-size: 0.72rem;
+      }
+
+      .button-spinner {
+        width: 1rem;
+        height: 1rem;
+        border-radius: 999px;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        border-top-color: #fff;
+        animation: spin 0.8s linear infinite;
+        display: none;
+      }
+
+      .analyze-button.loading .button-spinner {
+        display: inline-block;
+      }
+
+      .analyze-button.loading .button-icon,
+      .analyze-button.loading .button-label {
+        display: none;
+      }
+
+      .search-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .inline-note {
+        margin: 0;
+        color: var(--color-on-surface-variant);
+        font-size: 0.9rem;
+      }
+
+      .inline-note.error {
+        color: var(--color-error);
+      }
+
+      .history {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .history-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--color-on-surface-variant);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .history-chip {
+        padding: 0.55rem 0.8rem;
+        border: 0;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--color-primary);
+        background: rgba(255, 255, 255, 0.78);
+      }
+
+      .alert-banner {
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.1rem;
+        border-radius: 1rem;
+        background: var(--color-warning-bg);
+        color: var(--color-warning-text);
+      }
+
+      .alert-banner.visible {
+        display: flex;
+      }
+
+      .alert-main {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .alert-icon {
+        width: 2.25rem;
+        height: 2.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.9rem;
+        background: rgba(255, 255, 255, 0.55);
+        font-size: 0.72rem;
+        font-weight: 800;
+      }
+
+      .alert-title {
+        margin: 0;
+        font-weight: 800;
+      }
+
+      .alert-copy {
+        margin: 0.2rem 0 0;
+        font-size: 0.92rem;
+      }
+
+      .alert-action {
+        border: 0;
+        padding: 0.7rem 0.95rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--color-warning-text);
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      .status-banner {
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.1rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .status-banner.visible {
+        display: flex;
+      }
+
+      .status-banner.error {
+        background: var(--color-danger-bg);
+        color: var(--color-error);
+      }
+
+      .status-banner.loading {
+        background: rgba(255, 255, 255, 0.88);
+      }
+
+      .status-banner.success {
+        background: var(--color-success-bg);
+        color: var(--color-success);
+      }
+
+      .status-main {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+      }
+
+      .status-dot {
+        width: 0.8rem;
+        height: 0.8rem;
+        border-radius: 999px;
+        background: currentColor;
+      }
+
+      .status-text {
+        margin: 0;
+        font-size: 0.94rem;
+        font-weight: 600;
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+        gap: 1.5rem;
+      }
+
+      .stack {
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      .card {
+        padding: 1.5rem;
+        border-radius: var(--radius-xl);
+        background: var(--color-surface-lowest);
+        box-shadow: var(--shadow-ambient);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .section-title {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1.18rem;
+      }
+
+      .card-subtitle {
+        margin: 0.4rem 0 0;
+        color: var(--color-on-surface-variant);
+        font-size: 0.92rem;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.45rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .pill.neutral {
+        color: var(--color-primary);
+        background: rgba(210, 228, 251, 0.55);
+      }
+
+      .pill.high {
+        color: #fff;
+        background: var(--color-error);
+      }
+
+      .pill.medium {
+        color: var(--color-orange);
+        background: var(--color-orange-bg);
+      }
+
+      .pill.low {
+        color: var(--color-success);
+        background: var(--color-success-bg);
+      }
+
+      .verification-list,
+      .risk-list,
+      .factor-list,
+      .info-grid,
+      .recommendation-actions {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .verification-item,
+      .risk-item,
+      .factor-item,
+      .info-item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.05rem;
+        border-radius: 1rem;
+        background: var(--color-surface);
+      }
+
+      .item-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.9rem;
+        min-width: 0;
+      }
+
+      .item-icon {
+        width: 2.4rem;
+        height: 2.4rem;
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.85rem;
+        background: rgba(210, 228, 251, 0.45);
+        color: var(--color-primary);
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .item-title {
+        margin: 0;
+        font-weight: 800;
+      }
+
+      .item-copy,
+      .item-detail {
+        margin: 0.22rem 0 0;
+        color: var(--color-on-surface-variant);
+        font-size: 0.9rem;
+      }
+
+      .status {
+        flex: none;
+        font-size: 0.88rem;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .status.success {
+        color: var(--color-success);
+      }
+
+      .status.warning {
+        color: var(--color-orange);
+      }
+
+      .status.error {
+        color: var(--color-error);
+      }
+
+      .status.pending {
+        color: var(--color-on-surface-variant);
+      }
+
+      .status.running {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        color: var(--color-primary);
+      }
+
+      .status-bar {
+        width: 4rem;
+        height: 0.45rem;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(210, 228, 251, 0.9);
+      }
+
+      .status-bar::after {
+        content: "";
+        display: block;
+        width: 60%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--color-primary), var(--color-primary-container));
+        animation: slide 1.2s ease-in-out infinite alternate;
+      }
+
+      .sub-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 1.5rem;
+      }
+
+      .score-card {
+        color: #f5f8ff;
+        background:
+          radial-gradient(circle at top, rgba(210, 228, 251, 0.16), transparent 36%),
+          linear-gradient(180deg, #081b2e, var(--color-primary));
+      }
+
+      .score-card .card-subtitle,
+      .score-card .muted,
+      .score-card .factor-copy {
+        color: rgba(244, 248, 255, 0.74);
+      }
+
+      .score-card .pill {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+
+      .score-wrap {
+        display: grid;
+        place-items: center;
+        padding: 0.6rem 0 0.4rem;
+      }
+
+      .score-ring {
+        position: relative;
+        width: 12rem;
+        height: 12rem;
+      }
+
+      .score-ring svg {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+      }
+
+      .score-ring .base {
+        fill: none;
+        stroke: rgba(244, 248, 255, 0.14);
+        stroke-width: 10;
+      }
+
+      .score-ring .progress {
+        fill: none;
+        stroke: #57c785;
+        stroke-width: 10;
+        stroke-linecap: round;
+        stroke-dasharray: var(--ring-length);
+        stroke-dashoffset: var(--ring-length);
+        transition: stroke-dashoffset 500ms ease, stroke 300ms ease;
+      }
+
+      .score-value {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        text-align: center;
+      }
+
+      .score-number {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 3.6rem;
+        line-height: 1;
+      }
+
+      .score-label {
+        font-size: 0.92rem;
+        color: rgba(244, 248, 255, 0.76);
+      }
+
+      .factor-list {
+        margin-top: 1.1rem;
+      }
+
+      .factor-item {
+        background: rgba(255, 255, 255, 0.07);
+      }
+
+      .factor-score {
+        font-family: var(--font-display);
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #fff;
+      }
+
+      .prediction-layout {
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      .metric {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .metric-number {
+        font-family: var(--font-display);
+        font-size: clamp(2.6rem, 5vw, 4rem);
+        line-height: 0.95;
+      }
+
+      .metric-label {
+        margin: 0.45rem 0 0;
+        max-width: 18rem;
+        color: var(--color-on-surface-variant);
+      }
+
+      .progress-block {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .progress-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        font-size: 0.9rem;
+      }
+
+      .progress-track {
+        width: 100%;
+        height: 0.8rem;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(210, 228, 251, 0.8);
+      }
+
+      .progress-bar {
+        height: 100%;
+        width: 0;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #57c785, #8ad5a9);
+        transition: width 500ms ease, background 300ms ease;
+      }
+
+      .sparkline {
+        width: 100%;
+        height: 4.6rem;
+        padding: 0.8rem 1rem;
+        border-radius: 1rem;
+        background: var(--color-surface);
+      }
+
+      .sparkline svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .sparkline path {
+        fill: none;
+        stroke: #34597b;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .recommendation-title {
+        font-family: var(--font-display);
+      }
+
+      .recommendation-box {
+        display: grid;
+        gap: 1rem;
+        padding: 1rem 1.05rem;
+        border-radius: 1rem;
+        background: var(--color-surface);
+      }
+
+      .recommendation-actions {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      }
+
+      .recommendation-action {
+        padding: 0.95rem 1rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .help-trigger {
+        flex: none;
+        padding: 0.55rem 0.8rem;
+        border: 0;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--color-primary);
+        background: rgba(210, 228, 251, 0.7);
+      }
+
+      .help-inline {
+        display: flex;
+        justify-content: flex-start;
+      }
+
+      .help-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1.2rem;
+        background: rgba(4, 22, 39, 0.46);
+        backdrop-filter: blur(12px);
+      }
+
+      .help-modal.visible {
+        display: flex;
+      }
+
+      .help-dialog {
+        width: min(760px, 100%);
+        max-height: min(85vh, 900px);
+        overflow: auto;
+        padding: 1.4rem;
+        border-radius: 1.2rem;
+        background: var(--color-surface-lowest);
+        box-shadow: var(--shadow-ambient);
+      }
+
+      .help-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .help-title {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1.35rem;
+      }
+
+      .help-close {
+        width: 2.4rem;
+        height: 2.4rem;
+        border: 0;
+        border-radius: 999px;
+        color: var(--color-primary);
+        background: rgba(210, 228, 251, 0.7);
+      }
+
+      .help-lead {
+        margin: 0 0 1rem;
+        color: var(--color-on-surface-variant);
+      }
+
+      .help-blocks {
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .help-block {
+        padding: 1rem 1.05rem;
+        border-radius: 1rem;
+        background: var(--color-surface);
+      }
+
+      .help-block-title {
+        margin: 0 0 0.35rem;
+        font-weight: 800;
+      }
+
+      .help-block-copy {
+        margin: 0;
+        color: var(--color-on-surface-variant);
+        line-height: 1.55;
+      }
+
+      .action-name {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--color-on-surface-variant);
+      }
+
+      .action-copy {
+        margin: 0.35rem 0 0;
+        font-size: 0.9rem;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .fade-in {
+        animation: fadeUp 420ms ease both;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes slide {
+        from {
+          transform: translateX(-12%);
+        }
+
+        to {
+          transform: translateX(12%);
+        }
+      }
+
+      @media (max-width: 1150px) {
+        .app-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          position: static;
+          min-height: auto;
+        }
+
+        .main {
+          padding: 0 1rem 1rem;
+        }
+
+        .dashboard-grid,
+        .sub-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .sidebar {
+          padding: 1.25rem 1rem 0.5rem;
+        }
+
+        .nav-group {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .topbar,
+        .section-head,
+        .search-meta,
+        .status-banner,
+        .alert-banner,
+        .metric {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .search-row {
+          grid-template-columns: 1fr;
+        }
+
+        .analyze-button,
+        .secondary-button {
+          width: 100%;
+        }
+
+        .content {
+          padding: 1rem;
+          border-radius: 1.2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <p class="brand-kicker">Precision Security</p>
+          <h1 class="brand-name">Verifyor</h1>
+          <p class="brand-copy">Verification forensique d'identites email en temps reel.</p>
+        </div>
+
+        <nav class="nav-group" aria-label="Navigation principale">
+          <a class="nav-link" href="#">
+            <span class="nav-icon">DB</span>
+            <span>Tableau de bord</span>
+          </a>
+          <a class="nav-link active" href="#">
+            <span class="nav-icon">OK</span>
+            <span>Verification unique</span>
+          </a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h2 class="topbar-title">Verifyor</h2>
+            <p class="topbar-subtitle">Plateforme de verification et validation d'emails.</p>
+          </div>
+          <div class="topbar-actions">
+            <button class="action-chip" type="button" aria-label="Notifications">NT</button>
+            <button class="action-chip" type="button" aria-label="Profil utilisateur">VR</button>
+          </div>
+        </header>
+
+        <section class="content">
+            <div class="hero">
+              <div>
+                <h1 class="hero-title">Verification unique</h1>
+                <p class="hero-copy">
+                  Analysez plus de 40 signaux de securite pour statuer sur la validite, la delivrabilite
+                  et le niveau de risque d'une identite email.
+                </p>
+              </div>
+              <div class="help-inline">
+                <button class="help-trigger" type="button" data-help="search">Aide sur cette zone</button>
+              </div>
+
+            <div class="search-panel">
+              <div class="search-row">
+                <div class="field-wrap">
+                  <span class="field-prefix" aria-hidden="true">SHD</span>
+                  <input
+                    id="emailInput"
+                    class="search-input"
+                    type="email"
+                    inputmode="email"
+                    autocomplete="off"
+                    placeholder="entree@exemple.com"
+                    aria-label="Adresse email"
+                  />
+                </div>
+                <button id="analyzeButton" class="analyze-button" type="button">
+                  <span class="button-icon">SHD</span>
+                  <span class="button-spinner" aria-hidden="true"></span>
+                  <span class="button-label">Analyser</span>
+                </button>
+              </div>
+
+              <div class="search-meta">
+                <p id="inputMessage" class="inline-note">Saisissez une adresse email valide pour lancer l'analyse.</p>
+                <div class="history">
+                  <span class="history-label">5 dernieres recherches</span>
+                  <div id="historyList" class="history"></div>
+                </div>
+              </div>
+
+              <div id="typoBanner" class="alert-banner" role="status" aria-live="polite">
+                <div class="alert-main">
+                  <span class="alert-icon" aria-hidden="true">TIP</span>
+                  <div>
+                    <p class="alert-title">Faute de frappe potentielle detectee</p>
+                    <p id="typoText" class="alert-copy"></p>
+                  </div>
+                </div>
+                <button id="applyTypoButton" class="alert-action" type="button">Appliquer la correction</button>
+              </div>
+
+              <div id="statusBanner" class="status-banner" aria-live="polite">
+                <div class="status-main">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  <p id="statusText" class="status-text"></p>
+                </div>
+                <button id="retryButton" class="secondary-button hidden" type="button">Reessayer</button>
+              </div>
+            </div>
+          </div>
+
+          <section id="resultsSection" class="hidden">
+            <div class="dashboard-grid fade-in">
+              <div class="stack">
+                <article class="card">
+                  <div class="section-head">
+                    <div>
+                      <h2 class="section-title">Verification technique</h2>
+                      <p class="card-subtitle">Syntaxe RFC 5322, DNS, SMTP et detection d'adresse de role.</p>
+                    </div>
+                    <div>
+                      <span class="pill neutral">4 checks</span>
+                      <button class="help-trigger" type="button" data-help="technical">Aide</button>
+                    </div>
+                  </div>
+
+                  <div id="technicalList" class="verification-list"></div>
+                </article>
+
+                <div class="sub-grid">
+                  <article class="card">
+                    <div class="section-head">
+                      <div>
+                        <h2 class="section-title">Prediction comportementale IA</h2>
+                        <p class="card-subtitle">Probabilite de validite et densite de spam en temps reel.</p>
+                      </div>
+                      <div>
+                        <span id="spamDensityBadge" class="pill low">Low Density</span>
+                        <button class="help-trigger" type="button" data-help="ai">Aide</button>
+                      </div>
+                    </div>
+
+                    <div class="prediction-layout">
+                      <div class="metric">
+                        <div>
+                          <div id="aiProbability" class="metric-number">0.0%</div>
+                          <p id="aiSummary" class="metric-label"></p>
+                        </div>
+                        <span id="predictionBadge" class="pill neutral">Stable</span>
+                      </div>
+
+                      <div class="progress-block">
+                        <div class="progress-top">
+                          <span>Probabilite de validite</span>
+                          <strong id="aiProbabilitySmall">0.0%</strong>
+                        </div>
+                        <div class="progress-track">
+                          <div id="aiProgressBar" class="progress-bar"></div>
+                        </div>
+                      </div>
+
+                      <div class="sparkline" aria-hidden="true">
+                        <svg viewBox="0 0 320 60" preserveAspectRatio="none">
+                          <path id="sparklinePath" d="M6 42 C36 40, 42 24, 72 26 S122 44, 152 36 S202 12, 232 18 S280 30, 314 8"></path>
+                        </svg>
+                      </div>
+
+                      <div id="factorList" class="info-grid"></div>
+                    </div>
+                  </article>
+
+                  <article class="card">
+                    <div class="section-head">
+                      <div>
+                        <h2 class="section-title">Intelligence des risques</h2>
+                        <p class="card-subtitle">Phishing, conformite RGPD et disposition recommandee.</p>
+                      </div>
+                      <div>
+                        <span id="riskLevelBadge" class="pill high">High Risk</span>
+                        <button class="help-trigger" type="button" data-help="risk">Aide</button>
+                      </div>
+                    </div>
+
+                    <div id="riskList" class="risk-list"></div>
+
+                    <div class="recommendation-box">
+                      <div>
+                        <div class="recommendation-title">Disposition et recommandations</div>
+                        <p id="recommendationText" class="card-subtitle"></p>
+                      </div>
+                      <div id="recommendationActions" class="recommendation-actions"></div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
+              <div class="stack">
+                <article class="card score-card">
+                  <div class="section-head">
+                    <div>
+                      <h2 class="section-title">Score de confiance du domaine</h2>
+                      <p class="card-subtitle">Age du domaine, DNS, SSL, reputation et historique d'abus.</p>
+                    </div>
+                    <div>
+                      <span id="trustLevelPill" class="pill">Stable</span>
+                      <button class="help-trigger" type="button" data-help="trust">Aide</button>
+                    </div>
+                  </div>
+
+                  <div class="score-wrap">
+                    <div class="score-ring" aria-label="Score de confiance du domaine">
+                      <svg viewBox="0 0 120 120">
+                        <circle class="base" cx="60" cy="60" r="45"></circle>
+                        <circle id="scoreRingProgress" class="progress" cx="60" cy="60" r="45"></circle>
+                      </svg>
+                      <div class="score-value">
+                        <div>
+                          <strong id="trustScore" class="score-number">0</strong>
+                          <span id="trustLabel" class="score-label">En attente</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p id="trustSummary" class="muted"></p>
+                  <div id="trustFactors" class="factor-list"></div>
+                </article>
+
+                <article class="card">
+                  <div class="section-head">
+                    <div>
+                      <h2 class="section-title">Profil enrichi</h2>
+                      <p class="card-subtitle">Identite inferee, type d'email et intelligence de domaine.</p>
+                    </div>
+                    <button class="help-trigger" type="button" data-help="profile">Aide</button>
+                  </div>
+
+                  <div id="profileInsights" class="info-grid"></div>
+                </article>
+
+                <article class="card">
+                  <div class="section-head">
+                    <div>
+                      <h2 class="section-title">Export et rapport</h2>
+                      <p class="card-subtitle">Rapport forensique PDF complet avec branding Verifyor.</p>
+                    </div>
+                    <button class="help-trigger" type="button" data-help="report">Aide</button>
+                  </div>
+
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <div class="item-main">
+                        <span class="item-icon">PDF</span>
+                        <div>
+                          <p class="item-title">Rapport A4 confidentiel</p>
+                          <p class="item-copy">Resume executif, details techniques, risque, conformite et hash d'analyse.</p>
+                        </div>
+                      </div>
+                      <span class="status success">Pret</span>
+                    </div>
+
+                    <div class="info-item">
+                      <div class="item-main">
+                        <span class="item-icon">QR</span>
+                        <div>
+                          <p class="item-title">Verification d'authenticite</p>
+                          <p class="item-copy">Filigrane Verifyor et QR code de verification inclus dans le rapport.</p>
+                        </div>
+                      </div>
+                      <span class="status success">&lt; 5 s</span>
+                    </div>
+                  </div>
+
+                  <button id="pdfButton" class="secondary-button" type="button">Telecharger le rapport PDF complet</button>
+                </article>
+              </div>
+            </div>
+          </section>
+
+        </section>
+      </main>
+    </div>
+
+    <div id="helpModal" class="help-modal" aria-hidden="true">
+      <div class="help-dialog">
+        <div class="help-header">
+          <div>
+            <h2 id="helpTitle" class="help-title"></h2>
+            <p id="helpLead" class="help-lead"></p>
+          </div>
+          <button id="helpCloseButton" class="help-close" type="button" aria-label="Fermer l'aide">X</button>
+        </div>
+        <div id="helpBlocks" class="help-blocks"></div>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

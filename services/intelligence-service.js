@@ -31,6 +31,54 @@ function buildLinkedInUrl(handle) {
   return `https://www.linkedin.com/${String(handle).replace(/^\/+/, "")}`;
 }
 
+function buildSocialUrl(network, handle) {
+  if (!handle) return null;
+  if (String(handle).startsWith("http")) return handle;
+
+  const normalized = String(handle).replace(/^@/, "").replace(/^\/+/, "");
+
+  if (network === "linkedin") return `https://www.linkedin.com/${normalized}`;
+  if (network === "twitter") return `https://x.com/${normalized}`;
+  if (network === "github") return `https://github.com/${normalized}`;
+  if (network === "facebook") return `https://www.facebook.com/${normalized}`;
+  if (network === "gravatar") return `https://gravatar.com/${normalized}`;
+
+  return null;
+}
+
+function normalizeSocialProfiles(person) {
+  const profiles = [
+    {
+      network: "linkedin",
+      handle: person.linkedin ? person.linkedin.handle : null,
+      url: buildSocialUrl("linkedin", person.linkedin ? person.linkedin.handle : null)
+    },
+    {
+      network: "twitter",
+      handle: person.twitter ? person.twitter.handle : null,
+      url: buildSocialUrl("twitter", person.twitter ? person.twitter.handle : null)
+    },
+    {
+      network: "github",
+      handle: person.github ? person.github.handle : null,
+      url: buildSocialUrl("github", person.github ? person.github.handle : null)
+    },
+    {
+      network: "facebook",
+      handle: person.facebook ? person.facebook.handle : null,
+      url: buildSocialUrl("facebook", person.facebook ? person.facebook.handle : null)
+    },
+    {
+      network: "gravatar",
+      handle: person.gravatar ? person.gravatar.handle : null,
+      url: buildSocialUrl("gravatar", person.gravatar ? person.gravatar.handle : null),
+      avatar_url: person.gravatar ? person.gravatar.avatar : null
+    }
+  ];
+
+  return profiles.filter((profile) => profile.handle || profile.url || profile.avatar_url);
+}
+
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, options);
   const payload = await response.json().catch(() => null);
@@ -122,6 +170,7 @@ function normalizeHunterIntelligence({ email, currentResult, combined, company, 
   const combinedCompany = combinedData.company || {};
   const chosenCompany = Object.keys(companyData).length ? companyData : combinedCompany;
   const domainContacts = Array.isArray(domainData.emails) ? domainData.emails.slice(0, 5).map(normalizeHunterContact) : [];
+  const socialProfiles = normalizeSocialProfiles(person);
   const linkedinHandle = person.linkedin && person.linkedin.handle
     ? person.linkedin.handle
     : chosenCompany.linkedin && chosenCompany.linkedin.handle
@@ -165,8 +214,10 @@ function normalizeHunterIntelligence({ email, currentResult, combined, company, 
       title: employment.title || finderData.position || null,
       seniority: employment.seniority || null,
       avatar_url: person.avatar || (person.gravatar ? person.gravatar.avatar : null) || null,
-      linkedin_url: buildLinkedInUrl(linkedinHandle)
+      linkedin_url: buildLinkedInUrl(linkedinHandle),
+      social_profiles: socialProfiles
     },
+    social_profiles: socialProfiles,
     pattern_detection: {
       pattern: domainData.pattern || finderData.pattern || null,
       organization: domainData.organization || chosenCompany.name || null,

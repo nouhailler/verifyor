@@ -893,45 +893,85 @@
       .join("");
   }
 
+  function renderSocialProfiles(profiles) {
+    const items = (profiles || [])
+      .filter((profile) => profile && (profile.url || profile.handle))
+      .map((profile) => {
+        const url = safeUrl(profile.url);
+        const label = profile.handle ? `${profile.network}: ${profile.handle}` : profile.network;
+        if (!url) {
+          return `<span class="status pending">${escapeHtml(label)}</span>`;
+        }
+        return `<a class="link-action" href="${url}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
+      });
+
+    return items.length ? items.join(" | ") : "Aucun reseau social public remonte";
+  }
+
   function renderHunterInsights(data) {
     const contacts = (data.pattern_detection && data.pattern_detection.sample_emails ? data.pattern_detection.sample_emails : [])
       .slice(0, 3)
       .map((contact) => `${contact.email || "-"}${contact.position ? ` (${contact.position})` : ""}`)
       .join(" | ") || "Aucun email source remonte";
+    const socialProfiles = renderSocialProfiles(data.social_profiles || data.person.social_profiles || []);
 
-    renderInfoRows(elements.hunterInsights, [
-      {
-        icon: "B2B",
-        title: "Entreprise",
-        copy: data.company.name || "Societe inconnue",
-        detail: [data.company.industry, data.company.location, data.company.domain].filter(Boolean).join(" | "),
-        status: { label: data.company.domain || "n/a", kind: "success" }
-      },
-      {
-        icon: "PAT",
-        title: "Pattern detection",
-        copy: data.pattern_detection.pattern || "Pattern non remonte",
-        detail: `Exemples trouves: ${contacts}`,
-        status: { label: data.pattern_detection.organization || "Pattern", kind: "warning" }
-      },
-      {
-        icon: "DLV",
-        title: "Deliverability Hunter",
-        copy: data.deliverability.result || "Inconnu",
-        detail: `Score: ${data.deliverability.score ?? "-"} | Status: ${data.deliverability.status || "-"}`,
-        status: {
-          label: data.deliverability.result || "n/a",
-          kind: data.deliverability.result === "deliverable" || data.deliverability.result === "valid" ? "success" : "warning"
-        }
-      },
-      {
-        icon: "PRS",
-        title: "Personne enrichie",
-        copy: data.person.full_name || "Unknown user",
-        detail: `Titre: ${data.person.title || "-"}${data.person.linkedin_url ? ` | LinkedIn: ${data.person.linkedin_url}` : ""}`,
-        status: { label: data.emailFinder.email || data.email, kind: "success" }
-      }
-    ]);
+    elements.hunterInsights.innerHTML = `
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">B2B</span>
+          <div>
+            <p class="item-title">Entreprise</p>
+            <p class="item-copy">${escapeHtml(data.company.name || "Societe inconnue")}</p>
+            <p class="item-detail">${escapeHtml([data.company.industry, data.company.location, data.company.domain].filter(Boolean).join(" | "))}</p>
+          </div>
+        </div>
+        <span class="status success">${escapeHtml(data.company.domain || "n/a")}</span>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">PAT</span>
+          <div>
+            <p class="item-title">Pattern detection</p>
+            <p class="item-copy">${escapeHtml(data.pattern_detection.pattern || "Pattern non remonte")}</p>
+            <p class="item-detail">${escapeHtml(`Exemples trouves: ${contacts}`)}</p>
+          </div>
+        </div>
+        <span class="status warning">${escapeHtml(data.pattern_detection.organization || "Pattern")}</span>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">DLV</span>
+          <div>
+            <p class="item-title">Deliverability Hunter</p>
+            <p class="item-copy">${escapeHtml(data.deliverability.result || "Inconnu")}</p>
+            <p class="item-detail">${escapeHtml(`Score: ${data.deliverability.score ?? "-"} | Status: ${data.deliverability.status || "-"}`)}</p>
+          </div>
+        </div>
+        <span class="status ${data.deliverability.result === "deliverable" || data.deliverability.result === "valid" ? "success" : "warning"}">${escapeHtml(data.deliverability.result || "n/a")}</span>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">PRS</span>
+          <div>
+            <p class="item-title">Personne enrichie</p>
+            <p class="item-copy">${escapeHtml(data.person.full_name || "Unknown user")}</p>
+            <p class="item-detail">${escapeHtml(`Titre: ${data.person.title || "-"}${data.person.linkedin_url ? ` | LinkedIn: ${data.person.linkedin_url}` : ""}`)}</p>
+          </div>
+        </div>
+        <span class="status success">${escapeHtml(data.emailFinder.email || data.email)}</span>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">SOC</span>
+          <div>
+            <p class="item-title">Reseaux sociaux</p>
+            <p class="item-copy">${socialProfiles}</p>
+            <p class="item-detail">Liens publics remontes par l'email enrichment Hunter quand ils existent.</p>
+          </div>
+        </div>
+        <span class="status ${(data.social_profiles || data.person.social_profiles || []).length ? "success" : "pending"}">${(data.social_profiles || data.person.social_profiles || []).length ? "public" : "none"}</span>
+      </div>
+    `;
   }
 
   function renderGravatarInsights(data) {

@@ -7,7 +7,8 @@
     statusBanner: document.getElementById("adminStatusBanner"),
     statusText: document.getElementById("adminStatusText"),
     analysesList: document.getElementById("adminAnalysesList"),
-    enrichmentsList: document.getElementById("adminEnrichmentsList")
+    enrichmentsList: document.getElementById("adminEnrichmentsList"),
+    analysisDetail: document.getElementById("adminAnalysisDetail")
   };
 
   function escapeHtml(value) {
@@ -47,14 +48,90 @@
     return payload;
   }
 
+  function renderAnalysisDetail(analysis) {
+    if (!analysis) {
+      elements.analysisDetail.innerHTML = '<p class="insight-empty">Aucune recherche selectionnee.</p>';
+      return;
+    }
+
+    const payload = analysis.payload || {};
+    const rows = [
+      ["Email", payload.email || analysis.email],
+      ["Nom complet", payload.full_name || analysis.full_name || "Unknown user"],
+      ["Statut", payload.status || analysis.status || "-"],
+      ["Risque", payload.risk || analysis.risk || "-"],
+      ["Score", payload.score ?? analysis.score ?? "-"],
+      ["Provider", payload.verification_provider || analysis.verification_provider || "-"],
+      ["Provider demande", payload.requested_provider || "-"],
+      ["Fallback local", payload.is_local_fallback ? "oui" : "non"],
+      ["Domaine", payload.domain || analysis.domain || "-"],
+      ["Detail deliverability", payload.deliverabilityDetail || payload.sub_status || "-"],
+      ["MX", payload.mx ? "oui" : "non"],
+      ["SMTP", payload.smtp ? "oui" : "non"],
+      ["Adresse jetable", payload.disposable ? "oui" : "non"],
+      ["Adresse de role", payload.role ? "oui" : "non"],
+      ["Suggestion", payload.suggestion || "-"],
+      ["Message provider", payload.provider_message || "-"],
+      ["Cree le", analysis.created_at || "-"]
+    ];
+
+    elements.analysisDetail.innerHTML = `
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">ID</span>
+          <div>
+            <p class="item-title">Recherche #${escapeHtml(analysis.id)}</p>
+            <p class="item-copy">${escapeHtml(analysis.email)}</p>
+            <p class="item-detail">Selectionnee depuis l'historique.</p>
+          </div>
+        </div>
+        <span class="status success">loaded</span>
+      </div>
+      ${rows.map(([label, value]) => `
+        <div class="info-item">
+          <div class="item-main">
+            <span class="item-icon">${escapeHtml(label.slice(0, 3).toUpperCase())}</span>
+            <div>
+              <p class="item-title">${escapeHtml(label)}</p>
+              <p class="item-copy">${escapeHtml(String(value == null ? "-" : value))}</p>
+            </div>
+          </div>
+        </div>
+      `).join("")}
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">RAW</span>
+          <div>
+            <p class="item-title">Payload JSON brut</p>
+            <pre class="item-detail" style="white-space:pre-wrap;overflow:auto;max-width:100%">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function loadAnalysisDetail(id) {
+    setStatus("loading", `Chargement du detail de la recherche #${id}...`);
+
+    try {
+      const analysis = await fetchJson(`/api/admin/analyses/${encodeURIComponent(id)}`);
+      renderAnalysisDetail(analysis);
+      setStatus("success", `Detail de la recherche #${id} charge.`);
+    } catch (error) {
+      setStatus("error", error.message);
+      elements.analysisDetail.innerHTML = `<p class="insight-empty">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
   function renderAnalyses(items) {
     if (!items.length) {
       elements.analysesList.innerHTML = '<p class="insight-empty">Aucune recherche sauvegardee.</p>';
+      renderAnalysisDetail(null);
       return;
     }
 
     elements.analysesList.innerHTML = items.map((item) => `
-      <div class="info-item">
+      <button class="info-item" type="button" data-analysis-id="${escapeHtml(item.id)}">
         <div class="item-main">
           <span class="item-icon">EML</span>
           <div>
@@ -64,8 +141,12 @@
           </div>
         </div>
         <span class="status ${item.risk === "high" ? "error" : item.risk === "medium" ? "warning" : "success"}">${escapeHtml(formatDateTime(item.created_at))}</span>
-      </div>
+      </button>
     `).join("");
+
+    elements.analysesList.querySelectorAll("[data-analysis-id]").forEach((button) => {
+      button.addEventListener("click", () => loadAnalysisDetail(button.dataset.analysisId));
+    });
   }
 
   function renderEnrichments(items) {
@@ -103,6 +184,7 @@
       elements.lastActivity.textContent = formatDateTime(summary.last_activity);
       renderAnalyses(history.analyses || []);
       renderEnrichments(history.enrichments || []);
+      renderAnalysisDetail(null);
       setStatus("success", "Base chargee avec succes.");
     } catch (error) {
       setStatus("error", error.message);

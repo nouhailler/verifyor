@@ -81,12 +81,26 @@
                   <h2 class="section-title">Historique des recherches</h2>
                   <p class="card-subtitle">Analyses email sauvegardees dans SQLite.</p>
                 </div>
-                <span class="pill neutral">SQLite</span>
+                <span class="pill neutral">Cliqueable</span>
               </div>
               <div id="adminAnalysesList" class="info-grid"></div>
             </article>
 
-            <article class="card">
+            <div class="stack">
+              <article class="card">
+                <div class="section-head">
+                  <div>
+                    <h2 class="section-title">Detail d'une recherche</h2>
+                    <p class="card-subtitle">Clique sur une ligne de l'historique pour voir le payload complet sauvegarde.</p>
+                  </div>
+                  <span class="pill neutral">Detail</span>
+                </div>
+                <div id="adminAnalysisDetail" class="info-grid">
+                  <p class="insight-empty">Aucune recherche selectionnee.</p>
+                </div>
+              </article>
+
+              <article class="card">
               <div class="section-head">
                 <div>
                   <h2 class="section-title">Historique des enrichissements</h2>
@@ -95,7 +109,8 @@
                 <span class="pill neutral">Events</span>
               </div>
               <div id="adminEnrichmentsList" class="info-grid"></div>
-            </article>
+              </article>
+            </div>
           </div>
         </section>
       </main>

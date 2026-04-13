@@ -374,6 +374,11 @@ test("admin and providers endpoints are exposed", async () => {
     method: "GET",
     url: "/api/admin/history?limit=20"
   });
+  const firstAnalysisId = adminHistoryResponse.json.analyses[0].id;
+  const adminAnalysisDetailResponse = await invokeApp(app, {
+    method: "GET",
+    url: `/api/admin/analyses/${firstAnalysisId}`
+  });
   const settingsResponse = await invokeApp(app, {
     method: "GET",
     url: "/api/settings"
@@ -394,6 +399,9 @@ test("admin and providers endpoints are exposed", async () => {
   assert.equal(adminHistoryResponse.statusCode, 200);
   assert.equal(Array.isArray(adminHistoryResponse.json.analyses), true);
   assert.equal(adminHistoryResponse.json.analyses[0].email, "ops@example.com");
+  assert.equal(adminAnalysisDetailResponse.statusCode, 200);
+  assert.equal(adminAnalysisDetailResponse.json.email, "ops@example.com");
+  assert.equal(typeof adminAnalysisDetailResponse.json.payload, "object");
 
   assert.equal(settingsResponse.statusCode, 200);
   assert.equal(typeof settingsResponse.json.default_provider, "string");

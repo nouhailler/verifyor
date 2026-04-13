@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const {
   clearAllData,
   getDashboardSummary,
+  getAnalysisById,
   listAdminHistory,
   listRecentAnalyses,
   saveAnalysis,
@@ -140,6 +141,15 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
   app.get("/api/admin/history", (req, res) => {
     const limit = safeNumber(req.query.limit, 100);
     return res.json(listAdminHistory(limit));
+  });
+
+  app.get("/api/admin/analyses/:id", (req, res) => {
+    const analysis = getAnalysisById(req.params.id);
+    if (!analysis) {
+      return res.status(404).json({ error: "Analysis not found" });
+    }
+
+    return res.json(analysis);
   });
 
   app.post("/api/report/pdf", (req, res) => {

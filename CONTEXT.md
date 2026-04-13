@@ -11,8 +11,8 @@ Verifyor est actuellement un MVP Node.js/Express tres compact:
 - pas de framework front
 - pas de base de donnees
 - pas de tests
-- pas de README
-- pas de depot Git dans ce dossier (`.git` absent)
+- depot Git initialise et pousse sur GitHub: `nouhailler/verifyor`
+- README present
 
 L'application sert a verifier une adresse email via l'API ZeroBounce et a presenter le resultat dans une interface dashboard.
 
@@ -77,11 +77,17 @@ Le frontend est une single page statique assez riche:
 
 ## Limites / trous actuels
 
-### 1. Pas d'historique versionne visible
+### 1. Historique Git tres recent
 
-Le dossier actuel n'est pas un repo git. Il est donc impossible de savoir exactement "ce qui a ete fait depuis la derniere fois" au sens historique.
+Le projet est maintenant versionne, mais l'historique disponible reste minimal a ce stade.
 
-Ce fichier documente l'etat courant present sur disque, pas une chronologie fiable de modifications.
+En pratique:
+
+- le depot Git existe bien
+- un premier import a ete pousse sur GitHub
+- l'historique anterieur a cet import n'est pas reconstructible automatiquement
+
+Ce fichier documente donc surtout l'etat courant du projet.
 
 ### 2. Export PDF non implemente
 
@@ -166,14 +172,13 @@ Cela ne prouve pas que l'application est en panne chez toi: cela bloque seulemen
 
 Si l'objectif est de faire evoluer Verifyor au-dela du MVP, les priorites raisonnables sont:
 
-1. ajouter un `README.md`
-2. sortir les styles inline de `index.html`
-3. implementer un vrai export PDF
-4. ajouter des tests sur `server.js`
-5. mieux separer logique metier et rendu frontend
-6. securiser la gestion des secrets
-7. remettre le projet sous Git si tu veux retrouver un vrai historique de contexte
+1. sortir les styles inline de `index.html`
+2. implementer un vrai export PDF
+3. ajouter des tests sur `server.js`
+4. mieux separer logique metier et rendu frontend
+5. securiser la gestion des secrets
+6. enrichir progressivement l'historique Git avec des changements atomiques
 
 ## Resume court
 
-Verifyor est aujourd'hui un MVP fonctionnel de verification email branche a ZeroBounce, avec une UI dashboard assez avancee et un backend minimal. Le coeur "verification + enrichissement + affichage" est present. Les principaux manques sont l'absence de git/historique, l'absence de tests, l'export PDF non fini et la presence d'une vraie cle API dans `.env`.
+Verifyor est aujourd'hui un MVP fonctionnel de verification email branche a ZeroBounce, avec une UI dashboard assez avancee et un backend minimal. Le coeur "verification + enrichissement + affichage" est present. Les principaux manques sont surtout l'absence de tests, l'export PDF non fini et le besoin de mieux securiser la gestion des secrets locaux.

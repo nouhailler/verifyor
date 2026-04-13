@@ -11,7 +11,7 @@ Verifyor est actuellement un MVP Node.js/Express tres compact:
 - pas de framework front
 - persistence SQLite locale pour les analyses dashboard et enrichissements
 - tests backend presents
-- depot Git initialise et pousse sur GitHub: `nouhailler/verifyor`
+- depot Git initialise et pousse sur GitHub
 - README present
 
 L'application sert a verifier une adresse email via l'API ZeroBounce et a presenter le resultat dans une interface dashboard.

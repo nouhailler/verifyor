@@ -2,12 +2,16 @@
   const state = {
     currentEmail: "",
     currentResult: null,
+    currentHunter: null,
+    currentGravatar: null,
+    currentLinkedin: null,
     retryEmail: "",
     typoSuggestion: null,
     isDownloadingPdf: false,
     isLoadingHunter: false,
     isLoadingGravatar: false,
     isLoadingLinkedin: false,
+    isSavingAnnotation: false,
     settings: null
   };
 
@@ -33,6 +37,10 @@
     trustLevelPill: document.getElementById("trustLevelPill"),
     scoreRingProgress: document.getElementById("scoreRingProgress"),
     profileInsights: document.getElementById("profileInsights"),
+    annotationTagsInput: document.getElementById("annotationTagsInput"),
+    annotationNoteInput: document.getElementById("annotationNoteInput"),
+    saveAnnotationButton: document.getElementById("saveAnnotationButton"),
+    annotationStatus: document.getElementById("annotationStatus"),
     aiProbability: document.getElementById("aiProbability"),
     aiProbabilitySmall: document.getElementById("aiProbabilitySmall"),
     aiSummary: document.getElementById("aiSummary"),
@@ -94,6 +102,19 @@
     return { label: "Fragile", className: "high" };
   }
 
+  function parseTags(value) {
+    return String(value || "")
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  function confidenceClass(level) {
+    if (level === "high confidence") return "success";
+    if (level === "medium confidence") return "warning";
+    return "error";
+  }
+
   function setStatusBanner(type, text, showRetry) {
     elements.statusBanner.className = `status-banner visible ${type}`;
     elements.statusText.textContent = text;
@@ -121,6 +142,12 @@
   function setAsyncButtonLoading(button, isLoading, loadingLabel, idleLabel) {
     button.disabled = isLoading;
     button.textContent = isLoading ? loadingLabel : idleLabel;
+  }
+
+  function setAnnotationLoading(isLoading) {
+    state.isSavingAnnotation = isLoading;
+    elements.saveAnnotationButton.disabled = isLoading;
+    elements.saveAnnotationButton.textContent = isLoading ? "Enregistrement..." : "Enregistrer annotations";
   }
 
   function formatStatus(status) {
@@ -155,7 +182,7 @@
       button.innerHTML = `
         <span class="history-primary">
           <span class="history-email">${item.email}</span>
-          <span class="history-meta">${formatStatus(item.status)} | provider ${item.verification_provider || "-"} | score ${item.score ?? "-"} | ${formatDateTime(item.created_at)}</span>
+          <span class="history-meta">${formatStatus(item.status)} | provider ${item.verification_provider || "-"} | score ${item.score ?? "-"}${item.tags && item.tags.length ? ` | tags ${item.tags.join("/")}` : ""} | ${formatDateTime(item.created_at)}</span>
         </span>
         <span class="status ${classForLevel(item.risk)}">${item.risk || "n/a"}</span>
       `;
@@ -270,6 +297,9 @@
   }
 
   function renderTechnicalList(result) {
+    const smtpSignals = result.technical_signals && result.technical_signals.smtp ? result.technical_signals.smtp : {};
+    const dnsSecurity = result.technical_signals && result.technical_signals.dns_security ? result.technical_signals.dns_security : {};
+    const domainDiagnostics = result.domain_diagnostics || { flags: {}, issues: [] };
     const items = [
       {
         icon: "SRC",
@@ -314,12 +344,10 @@
       },
       {
         icon: "SMTP",
-        title: "Verification SMTP",
-        copy: result.smtp
-          ? "Le serveur de messagerie accepte la boite comme probablement delivrable."
-          : "La validite SMTP n'a pas pu etre confirmee.",
-        detail: `Resultat principal: ${statusLabel(result.deliverability)}`,
-        status: result.smtp ? { label: "Existant", kind: "success" } : { label: "Inconnu", kind: "warning" }
+        title: "SMTP handshake avance",
+        copy: `Classification: ${smtpSignals.classification || (result.smtp ? "mailbox_exists" : "unknown")}`,
+        detail: `Mailbox exists: ${smtpSignals.mailbox_exists ? "oui" : "non"} | accept-all: ${smtpSignals.accept_all ? "oui" : "non"} | greylisting: ${smtpSignals.greylisting ? "oui" : "non"} | tempfail: ${smtpSignals.tempfail ? "oui" : "non"}`,
+        status: smtpSignals.mailbox_exists ? { label: "Existant", kind: "success" } : smtpSignals.greylisting || smtpSignals.tempfail ? { label: "Tempfail", kind: "warning" } : { label: "Inconnu", kind: "warning" }
       },
       {
         icon: "ROLE",
@@ -329,6 +357,29 @@
           : "Adresse non detectee comme generique.",
         detail: result.role ? "Ce type d'adresse est souvent partage entre plusieurs personnes." : "Meilleur signal pour un contact individuel.",
         status: result.role ? { label: "Role-based", kind: "warning" } : { label: "Nominative", kind: "success" }
+      },
+      {
+        icon: "DNS",
+        title: "DNS et securite email",
+        copy: `SPF ${dnsSecurity.spf && dnsSecurity.spf.present ? "oui" : "non"} | DKIM ${dnsSecurity.dkim && dnsSecurity.dkim.present ? "oui" : "non"} | DMARC ${dnsSecurity.dmarc && dnsSecurity.dmarc.present ? "oui" : "non"}`,
+        detail: `BIMI ${dnsSecurity.bimi && dnsSecurity.bimi.present ? "oui" : "non"} | MTA-STS ${dnsSecurity.mta_sts && dnsSecurity.mta_sts.present ? "oui" : "non"} | TLS-RPT ${dnsSecurity.tls_rpt && dnsSecurity.tls_rpt.present ? "oui" : "non"}`,
+        status: dnsSecurity.dmarc && dnsSecurity.dmarc.present ? { label: "Secure", kind: "success" } : { label: "Partial", kind: "warning" }
+      },
+      {
+        icon: "DOM",
+        title: "Typologie domaine",
+        copy: domainDiagnostics.issues && domainDiagnostics.issues.length
+          ? domainDiagnostics.issues.join(" | ")
+          : "Aucune anomalie de domaine evidente",
+        detail: `Parked: ${domainDiagnostics.flags.parked_domain ? "oui" : "non"} | site web: ${domainDiagnostics.flags.domain_without_website ? "absent" : "present"} | recent: ${domainDiagnostics.flags.recently_created_estimate ? "oui" : "non"}`,
+        status: domainDiagnostics.issues && domainDiagnostics.issues.length ? { label: "A revoir", kind: "warning" } : { label: "Stable", kind: "success" }
+      },
+      {
+        icon: "CTL",
+        title: "Catch-all",
+        copy: result.catch_all_probable ? "Le domaine semble accepter plusieurs boites arbitraires." : "Aucun signal catch-all fort detecte.",
+        detail: `Sous-statut: ${subStatusLabel(result.deliverabilityDetail)}`,
+        status: result.catch_all_probable ? { label: "Probable", kind: "warning" } : { label: "No", kind: "success" }
       },
       {
         icon: "TYP",
@@ -390,6 +441,8 @@
   }
 
   function scoreExplanation(result) {
+    const breakdown = result.score_breakdown || {};
+
     if (result.is_local_fallback) {
       return "Le mode automatique est tombe en fallback local DNS/MX. Aucune API payante n'a ete utilisee, donc le score reste plus heuristique.";
     }
@@ -406,11 +459,11 @@
       return "ZeroBounce n'a attribue aucun score utile ou a attribue la note la plus faible. Cela ne veut pas automatiquement dire que l'adresse est fausse.";
     }
 
-    if (result.score < 50) {
+    if ((breakdown.final ?? result.score) < 50) {
       return "La note est faible. L'adresse peut exister, mais sa qualite ou sa fiabilite parait limitee.";
     }
 
-    if (result.score < 70) {
+    if ((breakdown.final ?? result.score) < 70) {
       return "La note est moyenne. L'adresse merite une verification humaine si l'usage est sensible.";
     }
 
@@ -418,27 +471,30 @@
   }
 
   function renderTrustScore(result) {
-    const meta = trustMeta(result.score);
-    const offset = Number(((1 - result.score / 100) * 282.743).toFixed(3));
+    const finalScore = result.score_breakdown && typeof result.score_breakdown.final === "number"
+      ? result.score_breakdown.final
+      : result.score;
+    const meta = trustMeta(finalScore);
+    const offset = Number(((1 - finalScore / 100) * 282.743).toFixed(3));
 
-    elements.trustScore.textContent = String(result.score);
-    elements.trustLabel.textContent = meta.label;
+    elements.trustScore.textContent = String(finalScore);
+    elements.trustLabel.textContent = result.confidence_level || meta.label;
     elements.trustSummary.textContent =
       result.status === "valid"
         ? `Statut principal: ${statusLabel(result.status)}. ${scoreExplanation(result)}`
         : `Statut principal: ${statusLabel(result.status)}. ${scoreExplanation(result)}`;
     elements.scoreRingProgress.style.stroke = meta.color;
     elements.scoreRingProgress.style.strokeDashoffset = String(offset);
-    elements.trustLevelPill.textContent = meta.label;
+    elements.trustLevelPill.textContent = result.confidence_level || meta.label;
     elements.trustLevelPill.className = `pill ${meta.pillClass}`;
 
     const factors = [
-      { label: "Domaine", copy: result.domain, value: result.mx ? "MX OK" : "MX NOK" },
-      { label: "Resultat principal", copy: statusLabel(result.deliverability), value: result.smtp ? "SMTP OK" : "SMTP NOK" },
-      { label: "Adresse jetable", copy: result.disposable ? "Oui" : "Non", value: result.disposable ? "Risque" : "Stable" },
-      { label: "Adresse de role", copy: result.role ? "Oui" : "Non", value: result.role ? "A revoir" : "Nominale" },
-      { label: "Type de fournisseur", copy: result.provider_type === "free" ? "Gratuit" : "Entreprise", value: result.domain_age_estimate },
-      { label: "Utilisateur", copy: result.full_name || "Unknown user", value: result.email_type === "professional" ? "Pro" : "Perso" }
+      { label: "Deliverability", copy: `${result.score_breakdown ? result.score_breakdown.deliverability : result.score}/100`, value: statusLabel(result.deliverability) },
+      { label: "Fraud risk", copy: `${result.score_breakdown ? result.score_breakdown.fraud_risk : "-"} /100`, value: result.risk },
+      { label: "Identity", copy: `${result.score_breakdown ? result.score_breakdown.identity_confidence : "-"} /100`, value: result.full_name || "Unknown user" },
+      { label: "Domain trust", copy: `${result.score_breakdown ? result.score_breakdown.domain_trust : "-"} /100`, value: result.domain },
+      { label: "Catch-all", copy: result.catch_all_probable ? "Probable" : "Non", value: result.smtp ? "SMTP OK" : "SMTP NOK" },
+      { label: "Type de fournisseur", copy: result.provider_type === "free" ? "Gratuit" : "Entreprise", value: result.domain_age_estimate }
     ];
 
     if (result.is_local_fallback) {
@@ -464,7 +520,7 @@
   }
 
   function renderPrediction(result) {
-    const score = Number(result.score);
+    const score = Number(result.score_breakdown && typeof result.score_breakdown.final === "number" ? result.score_breakdown.final : result.score);
     const meta = probabilityMeta(score);
     const densityClass = classForLevel(result.risk);
     const densityLabel = result.risk === "high" ? "High Density" : result.risk === "medium" ? "Medium Density" : "Low Density";
@@ -502,28 +558,9 @@
         <div class="item-main">
           <span class="item-icon">QLT</span>
           <div>
-            <p class="item-title">Score de confiance</p>
-            <p class="item-copy">Score affiche: ${result.score}/100${result.score_source === "fallback" ? " (estimated score)" : ""}.</p>
+            <p class="item-title">Score explicable</p>
+            <p class="item-copy">Score final: ${score}/100 | niveau ${result.confidence_level || "-"}</p>
             <p class="item-detail">Source: ${result.is_local_fallback ? "Fallback local DNS/MX (aucune API payante)" : result.score_source === "fallback" ? "Calcul estime" : (result.verification_provider || "provider inconnu")}${result.quality_score_raw !== null ? ` | valeur brute: ${result.quality_score_raw}` : ""}</p>
-          </div>
-        </div>
-      </div>
-      <div class="info-item">
-        <div class="item-main">
-          <span class="item-icon">IDN</span>
-          <div>
-            <p class="item-title">Identite</p>
-            <p class="item-copy">${result.full_name || "Unknown user"}</p>
-            <p class="item-detail">Type: ${result.email_type === "professional" ? "professionnel" : "personnel"}</p>
-          </div>
-        </div>
-      </div>
-      <div class="info-item">
-        <div class="item-main">
-          <span class="item-icon">DSP</span>
-          <div>
-            <p class="item-title">Adresse jetable</p>
-            <p class="item-copy">${result.disposable ? "Le fournisseur signale une adresse temporaire ou jetable." : "Aucun signal d'adresse jetable."}</p>
           </div>
         </div>
       </div>
@@ -531,9 +568,28 @@
         <div class="item-main">
           <span class="item-icon">DLV</span>
           <div>
-            <p class="item-title">Resultat de delivrabilite</p>
-            <p class="item-copy">Resultat principal: ${statusLabel(result.deliverability)}</p>
-            <p class="item-detail">Detail du resultat: ${subStatusLabel(result.deliverabilityDetail)}</p>
+            <p class="item-title">Sous-scores</p>
+            <p class="item-copy">Deliverability ${result.score_breakdown ? result.score_breakdown.deliverability : "-"}/100 | Fraud ${result.score_breakdown ? result.score_breakdown.fraud_risk : "-"}/100</p>
+            <p class="item-detail">Identity ${result.score_breakdown ? result.score_breakdown.identity_confidence : "-"}/100 | Domain ${result.score_breakdown ? result.score_breakdown.domain_trust : "-"}/100</p>
+          </div>
+        </div>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">EXP</span>
+          <div>
+            <p class="item-title">Explication du score</p>
+            <p class="item-copy">${escapeHtml((result.explanation_lines || []).slice(0, 2).join(" | ") || "Aucune explication detaillee.")}</p>
+          </div>
+        </div>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">IDN</span>
+          <div>
+            <p class="item-title">Identite et typologie</p>
+            <p class="item-copy">${result.full_name || "Unknown user"} | ${result.email_type === "professional" ? "professionnel" : "personnel"}</p>
+            <p class="item-detail">Catch-all probable: ${result.catch_all_probable ? "oui" : "non"} | Adresse jetable: ${result.disposable ? "oui" : "non"}</p>
           </div>
         </div>
       </div>
@@ -550,6 +606,17 @@
   }
 
   function renderProfileInsights(result) {
+    const socialSummary = [
+      state.currentHunter && state.currentHunter.social_profiles ? state.currentHunter.social_profiles.length : 0,
+      state.currentGravatar && state.currentGravatar.social_profiles ? state.currentGravatar.social_profiles.length : 0,
+      state.currentLinkedin && state.currentLinkedin.social_profiles ? state.currentLinkedin.social_profiles.length : 0
+    ].reduce((sum, value) => sum + value, 0);
+    const socialLinks = renderSocialProfiles([
+      ...(state.currentHunter && state.currentHunter.social_profiles ? state.currentHunter.social_profiles : []),
+      ...(state.currentGravatar && state.currentGravatar.social_profiles ? state.currentGravatar.social_profiles : []),
+      ...(state.currentLinkedin && state.currentLinkedin.social_profiles ? state.currentLinkedin.social_profiles : [])
+    ]);
+
     elements.profileInsights.innerHTML = `
       <div class="info-item">
         <div class="item-main">
@@ -586,6 +653,17 @@
       </div>
       <div class="info-item">
         <div class="item-main">
+          <span class="item-icon">SOC</span>
+          <div>
+            <p class="item-title">Profils sociaux enrichis</p>
+            <p class="item-copy">${socialLinks}</p>
+            <p class="item-detail">GitHub, X, LinkedIn, Gravatar et autres comptes publics quand ils existent.</p>
+          </div>
+        </div>
+        <span class="status ${socialSummary ? "success" : "pending"}">${socialSummary ? `${socialSummary} signals` : "none"}</span>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
           <span class="item-icon">SRC</span>
           <div>
             <p class="item-title">Source utilisee</p>
@@ -599,12 +677,12 @@
         <div class="item-main">
           <span class="item-icon">RSK</span>
           <div>
-            <p class="item-title">Niveau de risque</p>
-            <p class="item-copy">${result.risk}</p>
-            <p class="item-detail">Statut principal: ${statusLabel(result.status)} | Score de confiance: ${result.score}/100</p>
+            <p class="item-title">Niveau de confiance</p>
+            <p class="item-copy">${result.confidence_level || "-"}</p>
+            <p class="item-detail">Statut principal: ${statusLabel(result.status)} | Score final: ${result.score_breakdown ? result.score_breakdown.final : result.score}/100</p>
           </div>
         </div>
-        <span class="status ${result.risk === "high" ? "error" : result.risk === "medium" ? "warning" : "success"}">${result.risk}</span>
+        <span class="status ${confidenceClass(result.confidence_level)}">${result.confidence_level || "-"}</span>
       </div>
     `;
   }
@@ -612,6 +690,7 @@
   function renderRiskIntelligence(result) {
     const riskClass = classForLevel(result.risk);
     const riskLabel = result.risk === "high" ? "High Risk" : result.risk === "medium" ? "Medium Risk" : "Low Risk";
+    const domainDiagnostics = result.domain_diagnostics || { flags: {}, issues: [] };
 
     elements.riskLevelBadge.textContent = riskLabel;
     elements.riskLevelBadge.className = `pill ${riskClass}`;
@@ -620,7 +699,9 @@
       result.disposable ? "Adresse jetable detectee" : "Pas d'adresse jetable",
       result.role ? "Adresse de role detectee" : "Pas d'adresse de role",
       result.smtp ? "SMTP valide" : "SMTP non confirme",
-      result.mx ? "MX detecte" : "MX absent"
+      result.mx ? "MX detecte" : "MX absent",
+      result.catch_all_probable ? "Catch-all probable" : "Pas de catch-all fort",
+      ...(domainDiagnostics.issues || [])
     ];
 
     elements.riskList.innerHTML = `
@@ -640,7 +721,7 @@
           <div>
             <p class="item-title">Intelligence domaine</p>
             <p class="item-copy">Domaine evalue: ${result.domain}</p>
-            <p class="item-detail">Type: ${result.provider_type === "free" ? "gratuit" : "entreprise"} | Age estime: ${result.domain_age_estimate}</p>
+            <p class="item-detail">Type: ${result.provider_type === "free" ? "gratuit" : "entreprise"} | Age estime: ${result.domain_age_estimate} | Web: ${domainDiagnostics.flags.domain_without_website ? "absent" : "present"}</p>
           </div>
         </div>
         <span class="status success">${result.domain}</span>
@@ -662,7 +743,7 @@
           <div>
             <p class="item-title">Action recommandee</p>
             <p class="item-copy">${result.status === "valid" ? "Adresse techniquement valide." : result.risk === "low" ? "Adresse exploitable." : result.risk === "medium" ? "Verification manuelle conseillee." : "Adresse a traiter avec une forte prudence."}</p>
-            <p class="item-detail">${result.suggestion ? `Suggestion detectee: ${result.suggestion}` : "Aucune correction automatique remontee."}</p>
+            <p class="item-detail">${result.suggestion ? `Suggestion detectee: ${result.suggestion}` : "Aucune correction automatique remontee."} ${result.confidence_level ? `| Confiance: ${result.confidence_level}` : ""}</p>
           </div>
         </div>
         <span class="status ${riskClass === "high" ? "error" : "warning"}">${result.risk}</span>
@@ -700,15 +781,31 @@
     `;
   }
 
+  function renderAnnotationEditor(result) {
+    const tags = Array.isArray(result.tags) ? result.tags : [];
+    elements.annotationTagsInput.value = tags.join(", ");
+    elements.annotationNoteInput.value = result.note_text || "";
+    elements.annotationStatus.textContent = result.analysis_id
+      ? `Analyse #${result.analysis_id} chargee.`
+      : "Aucune analyse persistante chargee.";
+  }
+
   function renderResult(result) {
     state.currentResult = result;
     state.currentEmail = result.email;
+    state.currentHunter = null;
+    state.currentGravatar = null;
+    state.currentLinkedin = null;
+    elements.hunterInsights.innerHTML = '<p class="insight-empty">Aucun enrichissement Hunter charge pour cette analyse.</p>';
+    elements.gravatarInsights.innerHTML = '<p class="insight-empty">Aucun lookup Gravatar charge pour cette analyse.</p>';
+    elements.linkedinInsights.innerHTML = '<p class="insight-empty">Aucun matching LinkedIn charge pour cette analyse.</p>';
     renderTypoBanner(result);
     renderTechnicalList(result);
     renderTrustScore(result);
     renderProfileInsights(result);
     renderPrediction(result);
     renderRiskIntelligence(result);
+    renderAnnotationEditor(result);
     elements.resultsSection.classList.remove("hidden");
     elements.resultsSection.classList.add("fade-in");
     setStatusBanner(
@@ -863,6 +960,23 @@
     return payload;
   }
 
+  async function saveAnnotations(analysisId, payload) {
+    const response = await fetch(`/api/admin/analyses/${encodeURIComponent(analysisId)}/annotations`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(body.error || "Impossible d'enregistrer les annotations.");
+    }
+    return body;
+  }
+
   function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -914,6 +1028,9 @@
       .map((contact) => `${contact.email || "-"}${contact.position ? ` (${contact.position})` : ""}`)
       .join(" | ") || "Aucun email source remonte";
     const socialProfiles = renderSocialProfiles(data.social_profiles || data.person.social_profiles || []);
+    const technologies = data.segmentation && data.segmentation.technologies && data.segmentation.technologies.length
+      ? data.segmentation.technologies.join(" | ")
+      : "Technologies non remontees";
 
     elements.hunterInsights.innerHTML = `
       <div class="info-item">
@@ -922,7 +1039,7 @@
           <div>
             <p class="item-title">Entreprise</p>
             <p class="item-copy">${escapeHtml(data.company.name || "Societe inconnue")}</p>
-            <p class="item-detail">${escapeHtml([data.company.industry, data.company.location, data.company.domain].filter(Boolean).join(" | "))}</p>
+            <p class="item-detail">${escapeHtml([data.company.industry, data.company.location, data.company.domain, data.company.website].filter(Boolean).join(" | "))}</p>
           </div>
         </div>
         <span class="status success">${escapeHtml(data.company.domain || "n/a")}</span>
@@ -944,7 +1061,7 @@
           <div>
             <p class="item-title">Deliverability Hunter</p>
             <p class="item-copy">${escapeHtml(data.deliverability.result || "Inconnu")}</p>
-            <p class="item-detail">${escapeHtml(`Score: ${data.deliverability.score ?? "-"} | Status: ${data.deliverability.status || "-"}`)}</p>
+            <p class="item-detail">${escapeHtml(`Score: ${data.deliverability.score ?? "-"} | Status: ${data.deliverability.status || "-"} | Accept-all: ${data.deliverability.accept_all ? "oui" : "non"}`)}</p>
           </div>
         </div>
         <span class="status ${data.deliverability.result === "deliverable" || data.deliverability.result === "valid" ? "success" : "warning"}">${escapeHtml(data.deliverability.result || "n/a")}</span>
@@ -955,10 +1072,32 @@
           <div>
             <p class="item-title">Personne enrichie</p>
             <p class="item-copy">${escapeHtml(data.person.full_name || "Unknown user")}</p>
-            <p class="item-detail">${escapeHtml(`Titre: ${data.person.title || "-"}${data.person.linkedin_url ? ` | LinkedIn: ${data.person.linkedin_url}` : ""}`)}</p>
+            <p class="item-detail">${escapeHtml(`Titre: ${data.person.title || "-"} | Bio: ${data.person.bio || "-"} | Localisation: ${data.person.location || "-"}`)}</p>
           </div>
         </div>
         <span class="status success">${escapeHtml(data.emailFinder.email || data.email)}</span>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">SEG</span>
+          <div>
+            <p class="item-title">Segmentation entreprise</p>
+            <p class="item-copy">${escapeHtml(`Taille: ${data.segmentation && data.segmentation.employee_range ? data.segmentation.employee_range : "-"} | Pays: ${data.segmentation && data.segmentation.country ? data.segmentation.country : "-"}`)}</p>
+            <p class="item-detail">${escapeHtml(`Secteur: ${data.segmentation && data.segmentation.industry ? data.segmentation.industry : "-"} | Recrutement: ${data.segmentation && data.segmentation.hiring_signal != null ? (data.segmentation.hiring_signal ? "oui" : "non") : "-"}`)}</p>
+          </div>
+        </div>
+        <span class="status success">${escapeHtml(data.segmentation && data.segmentation.industry ? data.segmentation.industry : "segment")}</span>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">TEC</span>
+          <div>
+            <p class="item-title">Technologies</p>
+            <p class="item-copy">${escapeHtml(technologies)}</p>
+            <p class="item-detail">Signaux utiles pour qualifier le contexte B2B de la societe.</p>
+          </div>
+        </div>
+        <span class="status ${(data.segmentation && data.segmentation.technologies && data.segmentation.technologies.length) ? "success" : "pending"}">${(data.segmentation && data.segmentation.technologies && data.segmentation.technologies.length) ? "stack" : "none"}</span>
       </div>
       <div class="info-item">
         <div class="item-main">
@@ -987,6 +1126,7 @@
       .map((account) => account.service_label || account.service_type || account.url)
       .filter(Boolean)
       .join(" | ");
+    const socialProfiles = renderSocialProfiles(data.social_profiles || []);
     const profileUrl = safeUrl(data.profile_url);
     const photoUrl = safeUrl(data.photo_url);
 
@@ -996,7 +1136,7 @@
         <div>
           <p class="item-title">${escapeHtml(data.full_name || "Profil public sans nom")}</p>
           <p class="item-copy">${escapeHtml(`${data.job_title || "Aucun poste public"}${data.company ? ` | ${data.company}` : ""}`)}</p>
-          <p class="item-detail">${escapeHtml(data.location || "Localisation non publique")}</p>
+          <p class="item-detail">${escapeHtml(`${data.location || "Localisation non publique"}${data.bio ? ` | ${data.bio}` : ""}`)}</p>
         </div>
       </div>
       <div class="info-item">
@@ -1010,12 +1150,24 @@
         </div>
         <span class="status success">Public</span>
       </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">SOC</span>
+          <div>
+            <p class="item-title">Reseaux sociaux</p>
+            <p class="item-copy">${socialProfiles}</p>
+            <p class="item-detail">${escapeHtml(data.site || "Aucun site personnel remonte")}</p>
+          </div>
+        </div>
+        <span class="status ${data.social_profiles && data.social_profiles.length ? "success" : "pending"}">${data.social_profiles && data.social_profiles.length ? "public" : "none"}</span>
+      </div>
     `;
   }
 
   function renderLinkedinInsights(data) {
     const photoUrl = safeUrl(data.photo_url);
     const linkedinUrl = safeUrl(data.linkedin_url);
+    const socialProfiles = renderSocialProfiles(data.social_profiles || []);
     elements.linkedinInsights.innerHTML = `
       <div class="avatar-tile">
         ${photoUrl ? `<img class="avatar-image" src="${photoUrl}" alt="Photo du matching" />` : '<div class="avatar-image"></div>'}
@@ -1031,10 +1183,21 @@
           <div>
             <p class="item-title">Confiance du matching</p>
             <p class="item-copy">${escapeHtml(data.confidence)}</p>
-            <p class="item-detail">${escapeHtml(data.source_note)}</p>
+            <p class="item-detail">${escapeHtml(`${data.source_note}${data.location ? ` | ${data.location}` : ""}${data.site ? ` | ${data.site}` : ""}`)}</p>
           </div>
         </div>
         <span class="status ${data.confidence === "medium" ? "warning" : data.confidence === "low" ? "pending" : "error"}">${escapeHtml(data.confidence)}</span>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">SOC</span>
+          <div>
+            <p class="item-title">Signaux sociaux consolides</p>
+            <p class="item-copy">${socialProfiles}</p>
+            <p class="item-detail">${escapeHtml(data.bio || "Aucune bio remontee")}</p>
+          </div>
+        </div>
+        <span class="status ${data.social_profiles && data.social_profiles.length ? "success" : "pending"}">${data.social_profiles && data.social_profiles.length ? "multi" : "none"}</span>
       </div>
     `;
   }
@@ -1090,7 +1253,14 @@
     setStatusBanner("loading", `Generation du rapport PDF pour ${state.currentResult.email}...`, false);
 
     try {
-      const { blob, filename } = await requestPdfReport(state.currentResult);
+      const { blob, filename } = await requestPdfReport({
+        ...state.currentResult,
+        hunter: state.currentHunter,
+        gravatar: state.currentGravatar,
+        linkedin: state.currentLinkedin,
+        tags: parseTags(elements.annotationTagsInput.value),
+        note_text: elements.annotationNoteInput.value.trim()
+      });
       downloadBlob(blob, filename);
       setStatusBanner("success", `Rapport PDF genere pour ${state.currentResult.email}.`, false);
     } catch (error) {
@@ -1114,7 +1284,9 @@
 
     try {
       const payload = await postIntelligence("/api/intelligence/hunter", state.currentResult.email, state.currentResult);
+      state.currentHunter = payload;
       renderHunterInsights(payload);
+      renderProfileInsights(state.currentResult);
       setStatusBanner("success", `Intelligence B2B chargee pour ${state.currentResult.email}.`, false);
     } catch (error) {
       elements.hunterInsights.innerHTML = `<p class="insight-empty">${error.message}</p>`;
@@ -1133,7 +1305,9 @@
 
     try {
       const payload = await postIntelligence("/api/intelligence/gravatar", state.currentResult.email, state.currentResult);
+      state.currentGravatar = payload;
       renderGravatarInsights(payload);
+      renderProfileInsights(state.currentResult);
       setStatusBanner("success", `Lookup Gravatar termine pour ${state.currentResult.email}.`, false);
     } catch (error) {
       elements.gravatarInsights.innerHTML = `<p class="insight-empty">${error.message}</p>`;
@@ -1152,7 +1326,9 @@
 
     try {
       const payload = await postIntelligence("/api/intelligence/linkedin-match", state.currentResult.email, state.currentResult);
+      state.currentLinkedin = payload;
       renderLinkedinInsights(payload);
+      renderProfileInsights(state.currentResult);
       setStatusBanner("success", `Matching LinkedIn calcule pour ${state.currentResult.email}.`, false);
     } catch (error) {
       elements.linkedinInsights.innerHTML = `<p class="insight-empty">${error.message}</p>`;
@@ -1160,6 +1336,34 @@
     } finally {
       state.isLoadingLinkedin = false;
       setAsyncButtonLoading(elements.linkedinButton, false, "Matching en cours...", "LinkedIn matching");
+    }
+  }
+
+  async function handleSaveAnnotations() {
+    if (!state.currentResult || !state.currentResult.analysis_id) {
+      setStatusBanner("error", "Aucune analyse persistante disponible pour enregistrer des annotations.", false);
+      return;
+    }
+
+    setAnnotationLoading(true);
+
+    try {
+      const payload = await saveAnnotations(state.currentResult.analysis_id, {
+        note_text: elements.annotationNoteInput.value.trim(),
+        tags: parseTags(elements.annotationTagsInput.value)
+      });
+      state.currentResult = {
+        ...state.currentResult,
+        note_text: payload.note_text || "",
+        tags: payload.tags || []
+      };
+      renderAnnotationEditor(state.currentResult);
+      setStatusBanner("success", `Annotations enregistrees pour l'analyse #${state.currentResult.analysis_id}.`, false);
+      refreshDashboardSnapshot();
+    } catch (error) {
+      setStatusBanner("error", error.message, false);
+    } finally {
+      setAnnotationLoading(false);
     }
   }
 
@@ -1306,6 +1510,7 @@
   elements.applyTypoButton.addEventListener("click", applyTypoCorrection);
   elements.retryButton.addEventListener("click", () => runAnalysis(state.retryEmail));
   elements.pdfButton.addEventListener("click", handlePdfDownload);
+  elements.saveAnnotationButton.addEventListener("click", handleSaveAnnotations);
   elements.hunterButton.addEventListener("click", handleHunterLookup);
   elements.gravatarButton.addEventListener("click", handleGravatarLookup);
   elements.linkedinButton.addEventListener("click", handleLinkedinLookup);

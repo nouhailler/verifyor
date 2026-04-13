@@ -202,6 +202,8 @@ test("buildFrontendPayload computes a fallback score when ZeroBounce score is un
   assert.equal(payload.score, 100);
   assert.deepEqual(payload.mxRecords, ["mx.company.com"]);
   assert.equal(payload.role, true);
+  assert.equal(typeof payload.score_breakdown.final, "number");
+  assert.equal(typeof payload.confidence_level, "string");
 });
 
 test("buildPdfReport returns a PDF buffer", () => {
@@ -274,6 +276,7 @@ test("GET /api/verify returns mapped verification data", async () => {
   assert.equal(response.json.smtp, true);
   assert.equal(response.json.full_name, "Alice Martin");
   assert.equal(response.json.verification_provider, "local");
+  assert.equal(typeof response.json.analysis_id, "number");
 
   clearCache();
   clearAllData();
@@ -537,6 +540,64 @@ test("GET /api/admin/search filters analyses by combined payload fields", async 
   assert.equal(response.json.items[0].email, "patrick.nouhailler@gmail.com");
   assert.equal(response.json.items[0].payload.free_email, true);
   assert.equal(response.json.items[0].payload.score, 95);
+
+  clearCache();
+  clearAllData();
+});
+
+test("POST /api/admin/analyses/:id/annotations saves note and tags", async () => {
+  clearCache();
+  clearAllData();
+
+  const app = createApp({
+    verificationFetcher: async (email) => ({
+      email,
+      status: "valid",
+      sub_status: "valid_email",
+      domain: "example.com",
+      mx_found: true,
+      smtp_valid: true,
+      disposable: false,
+      toxic: false,
+      quality_score: 88,
+      quality_score_raw: 0.88,
+      did_you_mean: null,
+      mx_record: "mx.example.com",
+      provider: "Stub",
+      free_email: false,
+      firstname: "Jane",
+      lastname: "Doe",
+      full_name: "Jane Doe",
+      email_type: "professional",
+      company_domain: "example.com",
+      provider_type: "corporate",
+      domain_age_estimate: "old",
+      risk_level: "low",
+      risk: "low",
+      cached: false
+    })
+  });
+
+  const verifyResponse = await invokeApp(app, {
+    method: "GET",
+    url: "/api/verify?email=jane@example.com&provider=local"
+  });
+
+  const annotationResponse = await invokeApp(app, {
+    method: "POST",
+    url: `/api/admin/analyses/${verifyResponse.json.analysis_id}/annotations`,
+    headers: {
+      "content-type": "application/json"
+    },
+    body: {
+      note_text: "Lead prioritaire",
+      tags: ["vip", "sales"]
+    }
+  });
+
+  assert.equal(annotationResponse.statusCode, 200);
+  assert.equal(annotationResponse.json.note_text, "Lead prioritaire");
+  assert.deepEqual(annotationResponse.json.tags, ["vip", "sales"]);
 
   clearCache();
   clearAllData();

@@ -79,6 +79,18 @@ function normalizeSocialProfiles(person) {
   return profiles.filter((profile) => profile.handle || profile.url || profile.avatar_url);
 }
 
+function normalizeVerifiedAccounts(accounts) {
+  return (Array.isArray(accounts) ? accounts : [])
+    .slice(0, 8)
+    .map((account) => ({
+      network: account.service_type || account.service_label || "account",
+      handle: account.username || account.shortname || null,
+      url: account.url || account.profile_url || null,
+      verified: account.is_verified !== false
+    }))
+    .filter((account) => account.handle || account.url);
+}
+
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, options);
   const payload = await response.json().catch(() => null);
@@ -199,11 +211,15 @@ function normalizeHunterIntelligence({ email, currentResult, combined, company, 
       name: chosenCompany.name || employment.name || domainData.organization || currentResult.company_domain || currentResult.domain,
       legal_name: chosenCompany.legalName || null,
       domain: chosenCompany.domain || employment.domain || currentResult.domain,
+      website: chosenCompany.website || chosenCompany.domain || employment.domain || null,
       description: chosenCompany.description || null,
       location: chosenCompany.location || null,
+      country: chosenCompany.location ? String(chosenCompany.location).split(",").slice(-1)[0].trim() : null,
       phone: chosenCompany.phone || null,
       employees: chosenCompany.metrics ? chosenCompany.metrics.employees || null : null,
       industry: chosenCompany.category ? chosenCompany.category.industry || null : null,
+      technologies: Array.isArray(chosenCompany.technologies) ? chosenCompany.technologies.slice(0, 8) : [],
+      hiring: chosenCompany.metrics ? chosenCompany.metrics.isHiring ?? null : null,
       logo: chosenCompany.logo || null,
       linkedin_url: buildLinkedInUrl(chosenCompany.linkedin ? chosenCompany.linkedin.handle : null)
     },
@@ -213,6 +229,10 @@ function normalizeHunterIntelligence({ email, currentResult, combined, company, 
       last_name: personName.familyName || currentResult.lastname || null,
       title: employment.title || finderData.position || null,
       seniority: employment.seniority || null,
+      role: employment.role || null,
+      bio: person.bio || null,
+      location: person.location || null,
+      site: person.site || null,
       avatar_url: person.avatar || (person.gravatar ? person.gravatar.avatar : null) || null,
       linkedin_url: buildLinkedInUrl(linkedinHandle),
       social_profiles: socialProfiles
@@ -221,7 +241,23 @@ function normalizeHunterIntelligence({ email, currentResult, combined, company, 
     pattern_detection: {
       pattern: domainData.pattern || finderData.pattern || null,
       organization: domainData.organization || chosenCompany.name || null,
-      sample_emails: domainContacts
+      sample_emails: domainContacts,
+      public_emails: domainContacts.map((contact) => contact.email).filter(Boolean)
+    },
+    domain_search: {
+      organization: domainData.organization || null,
+      pattern: domainData.pattern || null,
+      disposable: domainData.disposable || null,
+      webmail: domainData.webmail || null,
+      accept_all: verifierData.accept_all ?? null
+    },
+    segmentation: {
+      employee_range: chosenCompany.metrics ? chosenCompany.metrics.employees || null : null,
+      industry: chosenCompany.category ? chosenCompany.category.industry || null : null,
+      location: chosenCompany.location || null,
+      country: chosenCompany.location ? String(chosenCompany.location).split(",").slice(-1)[0].trim() : null,
+      technologies: Array.isArray(chosenCompany.technologies) ? chosenCompany.technologies.slice(0, 8) : [],
+      hiring_signal: chosenCompany.metrics ? chosenCompany.metrics.isHiring ?? null : null
     },
     credits_note: getHunterApiKey() === "test-api-key"
       ? "Hunter test-api-key active: la structure de la reponse est valide, mais les donnees sont de demonstration."
@@ -301,6 +337,9 @@ async function getGravatarLookup(email) {
       location: payload.location || null,
       description: payload.description || null,
       verified_accounts: Array.isArray(payload.verified_accounts) ? payload.verified_accounts.slice(0, 6) : [],
+      social_profiles: normalizeVerifiedAccounts(payload.verified_accounts),
+      site: payload.profile_url || payload.site_url || null,
+      bio: payload.description || null,
       source_note: apiKey
         ? "Profil public Gravatar charge via l'API profile."
         : "Profil public Gravatar charge sans bearer token. Selon le compte et le rate limit, les donnees peuvent etre partielles."
@@ -316,6 +355,7 @@ async function getGravatarLookup(email) {
         profile_url: null,
         public_profile: false,
         verified_accounts: [],
+        social_profiles: [],
         source_note: "Aucun profil public Gravatar trouve pour cet email."
       };
     }
@@ -351,6 +391,13 @@ async function getLinkedInMatch(email, currentResult = {}) {
     company: hunterCompany.name || (gravatarData ? gravatarData.company : null) || currentResult.company_domain || null,
     photo_url: photoUrl,
     linkedin_url: hunterPerson.linkedin_url || hunterCompany.linkedin_url || null,
+    bio: hunterPerson.bio || (gravatarData ? gravatarData.bio : null) || null,
+    location: hunterPerson.location || (gravatarData ? gravatarData.location : null) || null,
+    site: hunterPerson.site || (gravatarData ? gravatarData.site : null) || null,
+    social_profiles: [
+      ...(hunterData && hunterData.social_profiles ? hunterData.social_profiles : []),
+      ...(gravatarData && gravatarData.social_profiles ? gravatarData.social_profiles : [])
+    ],
     confidence,
     source_note: "Ce matching n'utilise pas l'API officielle LinkedIn pour une recherche arbitraire. Il combine les signaux Hunter, Gravatar et les handles LinkedIn publics disponibles."
   };

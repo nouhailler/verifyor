@@ -10,7 +10,8 @@ const {
   listRecentAnalyses,
   searchAnalyses,
   saveAnalysis,
-  saveEnrichment
+  saveEnrichment,
+  updateAnalysisAnnotations
 } = require("./lib/db");
 const {
   readSettings,
@@ -90,8 +91,9 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
         is_local_fallback: false,
         ...verification
       });
+      const analysisId = saveAnalysis(payload);
+      payload.analysis_id = analysisId;
       setCached(provider, email, payload);
-      saveAnalysis(payload);
       return res.json(payload);
     } catch (error) {
       console.error("Email verification failed:", error.message);
@@ -155,6 +157,15 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
     }
 
     return res.json(analysis);
+  });
+
+  app.post("/api/admin/analyses/:id/annotations", (req, res) => {
+    const analysis = getAnalysisById(req.params.id);
+    if (!analysis) {
+      return res.status(404).json({ error: "Analysis not found" });
+    }
+
+    return res.json(updateAnalysisAnnotations(req.params.id, req.body || {}));
   });
 
   app.post("/api/report/pdf", (req, res) => {

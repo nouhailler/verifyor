@@ -267,12 +267,37 @@
                   <div class="section-head">
                     <div>
                       <h2 class="section-title">Profil enrichi</h2>
-                      <p class="card-subtitle">Identite inferee, type d'email et intelligence de domaine.</p>
+                      <p class="card-subtitle">Identite inferee, type d'email, profils sociaux et intelligence de domaine.</p>
                     </div>
                     <button class="help-trigger" type="button" data-help="profile">Aide</button>
                   </div>
 
                   <div id="profileInsights" class="info-grid"></div>
+                </article>
+
+                <article class="card">
+                  <div class="section-head">
+                    <div>
+                      <h2 class="section-title">Tags et annotations</h2>
+                      <p class="card-subtitle">Conserve des notes manuelles et tags metier sur la recherche courante.</p>
+                    </div>
+                    <span class="pill neutral">Notes</span>
+                  </div>
+
+                  <div class="stack-tight">
+                    <label class="filter-item">
+                      <span class="filter-label">Tags</span>
+                      <input id="annotationTagsInput" class="search-input" type="text" placeholder="vip, lead, a_revoir" />
+                    </label>
+                    <label class="filter-item">
+                      <span class="filter-label">Note</span>
+                      <textarea id="annotationNoteInput" class="search-input" placeholder="Commentaire interne sur cette recherche"></textarea>
+                    </label>
+                    <div class="button-row">
+                      <button id="saveAnnotationButton" class="secondary-button" type="button">Enregistrer annotations</button>
+                    </div>
+                    <p id="annotationStatus" class="note-small">Aucune annotation chargee.</p>
+                  </div>
                 </article>
 
                 <article class="card">
@@ -298,10 +323,10 @@
 
                     <div class="info-item">
                       <div class="item-main">
-                        <span class="item-icon">QR</span>
+                        <span class="item-icon">SRC</span>
                         <div>
-                          <p class="item-title">Verification d'authenticite</p>
-                          <p class="item-copy">Filigrane Verifyor et QR code de verification inclus dans le rapport.</p>
+                          <p class="item-title">Sources et drapeaux</p>
+                          <p class="item-copy">Le rapport inclut la synthese executive, les drapeaux de risque, les sous-scores et les sources utilisees.</p>
                         </div>
                       </div>
                       <span class="status success">&lt; 5 s</span>

@@ -58,6 +58,8 @@
     const rows = [
       ["Email", payload.email || analysis.email],
       ["Nom complet", payload.full_name || analysis.full_name || "Unknown user"],
+      ["Tags", (analysis.tags || []).join(", ") || "-"],
+      ["Note", analysis.note_text || "-"],
       ["Statut", payload.status || analysis.status || "-"],
       ["Risque", payload.risk || analysis.risk || "-"],
       ["Score", payload.score ?? analysis.score ?? "-"],

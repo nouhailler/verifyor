@@ -94,6 +94,14 @@
     }).format(date);
   }
 
+  function formatHumanValue(value) {
+    if (value == null || value === "") return "-";
+    if (typeof value === "boolean") return value ? "oui" : "non";
+    if (Array.isArray(value)) return value.length ? value.join(", ") : "-";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  }
+
   function setStatus(type, text) {
     elements.statusBanner.className = `status-banner visible ${type}`;
     elements.statusText.textContent = text;
@@ -222,6 +230,92 @@
   function buildDetailTable(analysis) {
     const rows = buildDetailRows(analysis);
     const payload = analysis.payload || {};
+    const payloadSections = [
+      {
+        title: "Verification",
+        rows: [
+          ["Provider choisi", payload.verification_provider],
+          ["Methode", payload.verification_method],
+          ["Provider demande", payload.requested_provider],
+          ["Fallback local", payload.is_local_fallback],
+          ["Message provider", payload.provider_message]
+        ]
+      },
+      {
+        title: "Identite email",
+        rows: [
+          ["Email", payload.email],
+          ["Prenom", payload.firstname],
+          ["Nom", payload.lastname],
+          ["Nom complet", payload.full_name],
+          ["Type d'email", payload.email_type],
+          ["Adresse de role", payload.role]
+        ]
+      },
+      {
+        title: "Deliverability",
+        rows: [
+          ["Statut", payload.status],
+          ["Sous-statut", payload.sub_status],
+          ["Deliverability", payload.deliverability],
+          ["Detail deliverability", payload.deliverabilityDetail],
+          ["MX trouve", payload.mx_found ?? payload.mx],
+          ["SMTP valide", payload.smtp_valid ?? payload.smtp],
+          ["MX principal", payload.mx_record],
+          ["MX records", payload.mxRecords],
+          ["Catch-all probable", payload.catch_all_probable]
+        ]
+      },
+      {
+        title: "Risque et qualite",
+        rows: [
+          ["Risque", payload.risk],
+          ["Niveau de risque", payload.risk_level],
+          ["Disposable", payload.disposable],
+          ["Toxic", payload.toxic],
+          ["Quality score", payload.quality_score],
+          ["Quality score raw", payload.quality_score_raw],
+          ["Score final", payload.score],
+          ["Computed score", payload.computedScore],
+          ["Source du score", payload.score_source],
+          ["Confiance", payload.confidence_level]
+        ]
+      },
+      {
+        title: "Domaine et securite DNS",
+        rows: [
+          ["Domaine", payload.domain],
+          ["Domaine entreprise", payload.company_domain],
+          ["Provider type", payload.provider_type],
+          ["Free email", payload.free_email],
+          ["Age estime", payload.domain_age_estimate],
+          ["Problemes domaine", payload.domain_diagnostics && payload.domain_diagnostics.issues],
+          ["SPF", payload.domain_diagnostics && payload.domain_diagnostics.security_posture && payload.domain_diagnostics.security_posture.spf],
+          ["DKIM", payload.domain_diagnostics && payload.domain_diagnostics.security_posture && payload.domain_diagnostics.security_posture.dkim],
+          ["DMARC", payload.domain_diagnostics && payload.domain_diagnostics.security_posture && payload.domain_diagnostics.security_posture.dmarc],
+          ["BIMI", payload.domain_diagnostics && payload.domain_diagnostics.security_posture && payload.domain_diagnostics.security_posture.bimi],
+          ["MTA-STS", payload.domain_diagnostics && payload.domain_diagnostics.security_posture && payload.domain_diagnostics.security_posture.mta_sts],
+          ["TLS-RPT", payload.domain_diagnostics && payload.domain_diagnostics.security_posture && payload.domain_diagnostics.security_posture.tls_rpt]
+        ]
+      },
+      {
+        title: "Scoring explicable",
+        rows: [
+          ["Deliverability score", payload.score_breakdown && payload.score_breakdown.deliverability],
+          ["Fraud risk score", payload.score_breakdown && payload.score_breakdown.fraud_risk],
+          ["Identity confidence", payload.score_breakdown && payload.score_breakdown.identity_confidence],
+          ["Domain trust", payload.score_breakdown && payload.score_breakdown.domain_trust],
+          ["Explications", payload.explanation_lines]
+        ]
+      },
+      {
+        title: "Annotations",
+        rows: [
+          ["Tags", analysis.tags],
+          ["Note", analysis.note_text]
+        ]
+      }
+    ];
 
     return `
       <div class="inline-detail-card">
@@ -248,8 +342,22 @@
           <div class="item-main">
             <span class="item-icon">RAW</span>
             <div>
-              <p class="item-title">Payload JSON brut</p>
-              <pre class="detail-pre">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+              <p class="item-title">Payload JSON brut, reformate pour lecture humaine</p>
+              <div class="payload-human-grid">
+                ${payloadSections.map((section) => `
+                  <div class="payload-human-card">
+                    <p class="payload-human-title">${escapeHtml(section.title)}</p>
+                    <div class="payload-human-list">
+                      ${section.rows.map(([label, value]) => `
+                        <div class="payload-human-row">
+                          <span class="payload-human-label">${escapeHtml(label)}</span>
+                          <span class="payload-human-value">${escapeHtml(formatHumanValue(value))}</span>
+                        </div>
+                      `).join("")}
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
             </div>
           </div>
         </div>
@@ -265,6 +373,14 @@
 
     const rows = buildDetailRows(analysis);
     const payload = analysis.payload || {};
+    const readablePayload = [
+      `Verification via ${formatHumanValue(payload.verification_provider)}`,
+      `Statut ${formatHumanValue(payload.status)} / ${formatHumanValue(payload.sub_status)}`,
+      `Domaine ${formatHumanValue(payload.domain)}`,
+      `Score ${formatHumanValue(payload.score)} | Confiance ${formatHumanValue(payload.confidence_level)}`,
+      `Risque ${formatHumanValue(payload.risk)}`,
+      `Problemes domaine ${formatHumanValue(payload.domain_diagnostics && payload.domain_diagnostics.issues)}`
+    ].join(" | ");
 
     elements.resultDetail.innerHTML = `
       <div class="info-item">
@@ -293,8 +409,9 @@
         <div class="item-main">
           <span class="item-icon">RAW</span>
           <div>
-            <p class="item-title">Payload JSON brut</p>
-            <pre class="detail-pre">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+            <p class="item-title">Lecture humaine du payload</p>
+            <p class="item-copy">${escapeHtml(readablePayload)}</p>
+            <p class="item-detail">Le detail complet et structure est aussi visible sous la ligne selectionnee.</p>
           </div>
         </div>
       </div>

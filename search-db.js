@@ -73,6 +73,7 @@
     resultsList: document.getElementById("searchResultsList"),
     resultDetail: document.getElementById("searchResultDetail")
   };
+  let expandedAnalysisId = null;
 
   function escapeHtml(value) {
     return String(value == null ? "" : value)
@@ -186,14 +187,13 @@
     return params;
   }
 
-  function renderDetail(analysis) {
+  function buildDetailRows(analysis) {
     if (!analysis) {
-      elements.resultDetail.innerHTML = '<p class="insight-empty">Aucune recherche selectionnee.</p>';
-      return;
+      return [];
     }
 
     const payload = analysis.payload || {};
-    const rows = [
+    return [
       ["Email", payload.email || analysis.email],
       ["Nom complet", payload.full_name || analysis.full_name || "Unknown user"],
       ["Statut", payload.status || analysis.status || "-"],
@@ -217,6 +217,54 @@
       ["Message provider", payload.provider_message || "-"],
       ["Cree le", analysis.created_at || "-"]
     ];
+  }
+
+  function buildDetailTable(analysis) {
+    const rows = buildDetailRows(analysis);
+    const payload = analysis.payload || {};
+
+    return `
+      <div class="inline-detail-card">
+        <div class="section-head">
+          <div>
+            <h3 class="section-title">Detail de la recherche #${escapeHtml(analysis.id)}</h3>
+            <p class="card-subtitle">Informations detaillees chargees directement sous le resultat selectionne.</p>
+          </div>
+          <span class="pill neutral">Inline</span>
+        </div>
+        <div class="detail-table-wrap">
+          <table class="detail-table">
+            <tbody>
+              ${rows.map(([label, value]) => `
+                <tr>
+                  <th scope="row">${escapeHtml(label)}</th>
+                  <td>${escapeHtml(String(value == null ? "-" : value))}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+        <div class="info-item">
+          <div class="item-main">
+            <span class="item-icon">RAW</span>
+            <div>
+              <p class="item-title">Payload JSON brut</p>
+              <pre class="detail-pre">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderDetail(analysis) {
+    if (!analysis) {
+      elements.resultDetail.innerHTML = '<p class="insight-empty">Aucune recherche selectionnee.</p>';
+      return;
+    }
+
+    const rows = buildDetailRows(analysis);
+    const payload = analysis.payload || {};
 
     elements.resultDetail.innerHTML = `
       <div class="info-item">
@@ -253,14 +301,32 @@
     `;
   }
 
-  async function loadDetail(id) {
+  async function loadDetail(id, triggerButton) {
     setStatus("loading", `Chargement du detail de la recherche #${id}...`);
 
     try {
       const analysis = await fetchJson(`/api/admin/analyses/${encodeURIComponent(id)}`);
+      const currentInline = elements.resultsList.querySelector(".inline-search-detail");
+      if (currentInline) {
+        currentInline.remove();
+      }
+
+      if (expandedAnalysisId === String(id)) {
+        expandedAnalysisId = null;
+        renderDetail(null);
+        setStatus("success", `Detail de la recherche #${id} masque.`);
+        return;
+      }
+
+      const detailContainer = document.createElement("div");
+      detailContainer.className = "inline-search-detail";
+      detailContainer.innerHTML = buildDetailTable(analysis);
+      triggerButton.insertAdjacentElement("afterend", detailContainer);
+      expandedAnalysisId = String(id);
       renderDetail(analysis);
       setStatus("success", `Detail de la recherche #${id} charge.`);
     } catch (error) {
+      expandedAnalysisId = null;
       renderDetail(null);
       setStatus("error", error.message);
     }
@@ -274,7 +340,7 @@
     }
 
     elements.resultsList.innerHTML = items.map((item) => `
-      <button class="info-item" type="button" data-analysis-id="${escapeHtml(item.id)}">
+      <button class="info-item search-result-item" type="button" data-analysis-id="${escapeHtml(item.id)}" aria-expanded="false">
         <div class="item-main">
           <span class="item-icon">EML</span>
           <div>
@@ -288,7 +354,16 @@
     `).join("");
 
     elements.resultsList.querySelectorAll("[data-analysis-id]").forEach((button) => {
-      button.addEventListener("click", () => loadDetail(button.dataset.analysisId));
+      button.addEventListener("click", () => {
+        const isExpanded = expandedAnalysisId === button.dataset.analysisId;
+        elements.resultsList.querySelectorAll("[data-analysis-id]").forEach((itemButton) => {
+          itemButton.setAttribute("aria-expanded", "false");
+        });
+        loadDetail(button.dataset.analysisId, button);
+        if (!isExpanded) {
+          button.setAttribute("aria-expanded", "true");
+        }
+      });
     });
   }
 
@@ -327,6 +402,7 @@
     elements.lastActivity.textContent = "-";
     elements.summary.textContent = "Filtres reinitialises. Lance une nouvelle recherche.";
     elements.resultsList.innerHTML = '<p class="insight-empty">Aucune recherche executee.</p>';
+    expandedAnalysisId = null;
     renderDetail(null);
     setStatus("success", "Filtres reinitialises.");
   }

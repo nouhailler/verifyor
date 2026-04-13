@@ -689,6 +689,55 @@
         font-size: 0.9rem;
       }
 
+      .inline-search-detail {
+        padding: 0 0.35rem 0.35rem;
+      }
+
+      .inline-detail-card {
+        padding: 1rem 1.05rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: var(--shadow-ambient);
+      }
+
+      .detail-table-wrap {
+        overflow: auto;
+        border-radius: 1rem;
+        background: var(--color-surface);
+      }
+
+      .detail-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .detail-table th,
+      .detail-table td {
+        padding: 0.85rem 1rem;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid rgba(68, 71, 76, 0.12);
+      }
+
+      .detail-table th {
+        width: 240px;
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--color-on-surface-variant);
+      }
+
+      .detail-table td {
+        color: var(--color-on-surface);
+        font-size: 0.92rem;
+      }
+
+      .detail-table tr:last-child th,
+      .detail-table tr:last-child td {
+        border-bottom: 0;
+      }
+
       .stack-tight {
         display: grid;
         gap: 0.9rem;

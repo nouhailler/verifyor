@@ -3,7 +3,8 @@
     currentEmail: "",
     currentResult: null,
     retryEmail: "",
-    typoSuggestion: null
+    typoSuggestion: null,
+    isDownloadingPdf: false
   };
 
   const historyKey = "verifyor-history";
@@ -137,6 +138,12 @@
     elements.analyzeButton.disabled = isLoading || !isValidEmail(normalizeEmail(elements.emailInput.value));
     elements.emailInput.disabled = isLoading;
     elements.analyzeButton.classList.toggle("loading", isLoading);
+  }
+
+  function setPdfLoading(isLoading) {
+    state.isDownloadingPdf = isLoading;
+    elements.pdfButton.disabled = isLoading;
+    elements.pdfButton.textContent = isLoading ? "Generation du PDF..." : "Telecharger le rapport PDF complet";
   }
 
   function updateInputState() {
@@ -602,6 +609,44 @@
     return payload;
   }
 
+  function filenameFromDisposition(header) {
+    if (!header) return "verifyor-report.pdf";
+    const match = /filename="([^"]+)"/i.exec(header);
+    return match ? match[1] : "verifyor-report.pdf";
+  }
+
+  async function requestPdfReport(result) {
+    const response = await fetch("/api/report/pdf", {
+      method: "POST",
+      headers: {
+        Accept: "application/pdf",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(result)
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.details || payload.error || "La generation du PDF a echoue.");
+    }
+
+    return {
+      blob: await response.blob(),
+      filename: filenameFromDisposition(response.headers.get("content-disposition"))
+    };
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   async function runAnalysis(rawEmail) {
     const email = normalizeEmail(rawEmail || elements.emailInput.value);
     state.retryEmail = email;
@@ -643,17 +688,24 @@
     runAnalysis(state.typoSuggestion);
   }
 
-  function handlePdfDownload() {
+  async function handlePdfDownload() {
     if (!state.currentResult) {
       setStatusBanner("error", "Aucun resultat disponible. Lancez une analyse avant l'export PDF.", false);
       return;
     }
 
-    setStatusBanner(
-      "success",
-      `Generation du rapport PDF complet pour ${state.currentResult.email}. La sortie PDF n'est pas encore connectee a un backend dedie.`,
-      false
-    );
+    setPdfLoading(true);
+    setStatusBanner("loading", `Generation du rapport PDF pour ${state.currentResult.email}...`, false);
+
+    try {
+      const { blob, filename } = await requestPdfReport(state.currentResult);
+      downloadBlob(blob, filename);
+      setStatusBanner("success", `Rapport PDF genere pour ${state.currentResult.email}.`, false);
+    } catch (error) {
+      setStatusBanner("error", error.message, false);
+    } finally {
+      setPdfLoading(false);
+    }
   }
 
   function getHelpContent(type) {
@@ -753,7 +805,7 @@
         lead: "Cette zone prepare un export de synthese pour partager le resultat.",
         blocks: [
           { title: "Utilite", copy: "Le PDF sert a garder une trace de l'analyse et a la transmettre a une autre equipe." },
-          { title: "Etat actuel", copy: "Le bouton est present, mais la generation PDF n'est pas encore reliee a un service backend de production." }
+          { title: "Etat actuel", copy: "Le bouton genere un PDF cote serveur a partir du resultat courant, puis telecharge le fichier dans le navigateur." }
         ]
       };
     }

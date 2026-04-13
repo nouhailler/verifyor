@@ -17,6 +17,7 @@ L'application prend une adresse email, interroge ZeroBounce cote serveur, puis a
 - [server.js](/home/homardsheriff/codex-workspace/verifyor/server.js): serveur Express, endpoint API, appel ZeroBounce, cache memoire, mapping des reponses
 - [app.js](/home/homardsheriff/codex-workspace/verifyor/app.js): logique frontend, fetch API, rendu des resultats, historique, aide contextuelle
 - [index.html](/home/homardsheriff/codex-workspace/verifyor/index.html): page unique, structure UI et styles
+- [test/server.test.js](/home/homardsheriff/codex-workspace/verifyor/test/server.test.js): tests backend et endpoints Express
 - [CONTEXT.md](/home/homardsheriff/codex-workspace/verifyor/CONTEXT.md): etat detaille du projet et points d'attention
 
 ## Installation
@@ -60,6 +61,13 @@ Le backend expose un endpoint:
 GET /api/verify?email=user@example.com
 ```
 
+et un endpoint d'export:
+
+```http
+POST /api/report/pdf
+Content-Type: application/json
+```
+
 Exemples de champs renvoyes:
 
 - `status`
@@ -85,13 +93,13 @@ Exemples de champs renvoyes:
 - historique local de session sur 5 recherches
 - vue dashboard avec sections techniques et metier
 - enrichissement heuristique du profil et du risque
+- export PDF reel cote serveur depuis le resultat courant
+- tests backend via `node --test`
 
 ## Limites actuelles
 
-- pas de tests
 - pas de base de donnees
 - pas d'authentification
-- export PDF non implemente
 - cache non persistant
 - plusieurs enrichissements sont heuristiques et pas garantis
 
@@ -101,10 +109,15 @@ Exemples de champs renvoyes:
 - seule la cle de demonstration dans `.env.example` doit rester versionnee
 - si une vraie cle a deja ete exposee hors machine locale, il faut la faire tourner
 
+## Tests
+
+```bash
+npm test
+```
+
 ## Prochaines etapes probables
 
-- implementer un vrai export PDF
-- ajouter des tests backend
 - separer davantage le CSS et le HTML
 - extraire la logique metier du fichier `server.js`
+- enrichir la suite de tests frontend et end-to-end
 - ameliorer la qualite des enrichissements

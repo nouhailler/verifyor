@@ -5,7 +5,8 @@
   "description": "Working email verification MVP with Express backend and real API integration",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

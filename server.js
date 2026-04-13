@@ -11,10 +11,17 @@ const {
   saveEnrichment
 } = require("./lib/db");
 const {
+  readSettings,
+  writeSettings
+} = require("./lib/settings");
+const {
   getGravatarLookup,
   getHunterB2BIntelligence,
   getLinkedInMatch
 } = require("./services/intelligence-service");
+const {
+  getProviderRuntimeStatus
+} = require("./services/provider-status");
 const {
   buildPdfReport,
   buildReportFilename,
@@ -111,6 +118,25 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
     });
   });
 
+  app.get("/api/settings", (req, res) => {
+    const settings = readSettings();
+    const runtime = getProviderRuntimeStatus();
+
+    return res.json({
+      ...settings,
+      runtime
+    });
+  });
+
+  app.post("/api/settings", (req, res) => {
+    writeSettings(req.body || {});
+    return res.json({
+      ok: true,
+      restart_required: true,
+      message: "Configuration enregistree. Redemarrage de l'application requis pour charger les nouvelles cles."
+    });
+  });
+
   app.get("/api/admin/history", (req, res) => {
     const limit = safeNumber(req.query.limit, 100);
     return res.json(listAdminHistory(limit));
@@ -189,6 +215,10 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
 
   app.get("/admin/db", (req, res) => {
     res.sendFile(path.resolve(__dirname, "admin-db.html"));
+  });
+
+  app.get("/settings", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "settings.html"));
   });
 
   app.get("*", (req, res) => {

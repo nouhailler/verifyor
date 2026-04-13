@@ -1,4 +1,8 @@
 const crypto = require("node:crypto");
+const {
+  clearProviderError,
+  setProviderError
+} = require("./provider-status");
 
 const {
   normalizeEmail,
@@ -55,12 +59,19 @@ async function fetchHunter(endpoint, params = {}) {
     }
   });
 
-  return fetchJson(url, {
-    headers: {
-      Accept: "application/json"
-    },
-    signal: AbortSignal.timeout(15000)
-  });
+  try {
+    const payload = await fetchJson(url, {
+      headers: {
+        Accept: "application/json"
+      },
+      signal: AbortSignal.timeout(15000)
+    });
+    clearProviderError("hunter");
+    return payload;
+  } catch (error) {
+    setProviderError("hunter", error.message);
+    throw error;
+  }
 }
 
 async function safeHunter(endpoint, params) {
@@ -223,6 +234,7 @@ async function getGravatarLookup(email) {
       },
       signal: AbortSignal.timeout(12000)
     });
+    clearProviderError("gravatar");
 
     return {
       email: normalized,
@@ -244,6 +256,7 @@ async function getGravatarLookup(email) {
     };
   } catch (error) {
     if (error.status === 404) {
+      clearProviderError("gravatar");
       return {
         email: normalized,
         hash,
@@ -256,6 +269,7 @@ async function getGravatarLookup(email) {
       };
     }
 
+    setProviderError("gravatar", error.message);
     throw error;
   }
 }

@@ -1,4 +1,8 @@
 const dns = require("node:dns/promises");
+const {
+  clearProviderError,
+  setProviderError
+} = require("./provider-status");
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const verificationCache = new Map();
@@ -365,6 +369,7 @@ async function fetchZeroBounceVerification(email) {
   const apiKey = getZeroBounceApiKey();
 
   if (!apiKey) {
+    setProviderError("zerobounce", "ZEROBOUNCE_API_KEY is missing.");
     throw new Error("ZEROBOUNCE_API_KEY is missing.");
   }
 
@@ -380,13 +385,17 @@ async function fetchZeroBounceVerification(email) {
 
   if (!response.ok) {
     const text = await response.text();
+    setProviderError("zerobounce", `ZeroBounce request failed with ${response.status}: ${text}`);
     throw new Error(`ZeroBounce request failed with ${response.status}: ${text}`);
   }
 
   const data = await response.json();
   if (data.error) {
+    setProviderError("zerobounce", typeof data.error === "string" ? data.error : JSON.stringify(data.error));
     throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error));
   }
+
+  clearProviderError("zerobounce");
 
   return mapZeroBounceResponse(email, data);
 }
@@ -395,6 +404,7 @@ async function fetchAbstractVerification(email) {
   const apiKey = getAbstractApiKey();
 
   if (!apiKey) {
+    setProviderError("abstract", "ABSTRACT_API_KEY is missing.");
     throw new Error("ABSTRACT_API_KEY is missing.");
   }
 
@@ -409,10 +419,12 @@ async function fetchAbstractVerification(email) {
 
   if (!response.ok) {
     const text = await response.text();
+    setProviderError("abstract", `Abstract request failed with ${response.status}: ${text}`);
     throw new Error(`Abstract request failed with ${response.status}: ${text}`);
   }
 
   const data = await response.json();
+  clearProviderError("abstract");
   return mapAbstractResponse(email, data);
 }
 

@@ -374,9 +374,17 @@ test("admin and providers endpoints are exposed", async () => {
     method: "GET",
     url: "/api/admin/history?limit=20"
   });
+  const settingsResponse = await invokeApp(app, {
+    method: "GET",
+    url: "/api/settings"
+  });
   const adminPageResponse = await invokeApp(app, {
     method: "GET",
     url: "/admin/db"
+  });
+  const settingsPageResponse = await invokeApp(app, {
+    method: "GET",
+    url: "/settings"
   });
 
   assert.equal(providersResponse.statusCode, 200);
@@ -387,8 +395,14 @@ test("admin and providers endpoints are exposed", async () => {
   assert.equal(Array.isArray(adminHistoryResponse.json.analyses), true);
   assert.equal(adminHistoryResponse.json.analyses[0].email, "ops@example.com");
 
+  assert.equal(settingsResponse.statusCode, 200);
+  assert.equal(typeof settingsResponse.json.default_provider, "string");
+  assert.equal(typeof settingsResponse.json.runtime, "object");
+
   assert.equal(adminPageResponse.statusCode, 200);
   assert.match(adminPageResponse.body.toString("utf8"), /Verifyor DB/);
+  assert.equal(settingsPageResponse.statusCode, 200);
+  assert.match(settingsPageResponse.body.toString("utf8"), /Parametrage/);
 
   clearCache();
   clearAllData();

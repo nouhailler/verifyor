@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verifyor Parametrage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <p class="brand-kicker">Settings</p>
+          <h1 class="brand-name">Parametrage</h1>
+          <p class="brand-copy">Configuration locale des providers et cles API.</p>
+        </div>
+
+        <nav class="nav-group" aria-label="Navigation settings">
+          <a class="nav-link" href="/">
+            <span class="nav-icon">VR</span>
+            <span>Verification unique</span>
+          </a>
+          <a class="nav-link" href="/admin/db">
+            <span class="nav-icon">SQL</span>
+            <span>Base De donnee</span>
+          </a>
+          <a class="nav-link active" href="/settings">
+            <span class="nav-icon">CFG</span>
+            <span>Parametrage</span>
+          </a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h2 class="topbar-title">Parametrage</h2>
+            <p class="topbar-subtitle">Les valeurs sont ecrites dans `.env`. Un redemarrage est necessaire apres modification.</p>
+          </div>
+        </header>
+
+        <section class="content">
+          <div id="settingsStatusBanner" class="status-banner visible loading">
+            <div class="status-main">
+              <span class="status-dot" aria-hidden="true"></span>
+              <p id="settingsStatusText" class="status-text">Chargement de la configuration...</p>
+            </div>
+          </div>
+
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <h2 class="section-title">Cles API et provider par defaut</h2>
+                <p class="card-subtitle">Mettre a jour les providers puis redemarrer `npm start`.</p>
+              </div>
+              <span class="pill neutral">.env</span>
+            </div>
+
+            <form id="settingsForm" class="info-grid">
+              <label class="info-item">
+                <div class="item-main">
+                  <span class="item-icon">PORT</span>
+                  <div>
+                    <p class="item-title">Port</p>
+                    <p class="item-detail">Port HTTP local de l'application.</p>
+                  </div>
+                </div>
+                <input id="portInput" class="search-input" type="text" />
+              </label>
+
+              <label class="info-item">
+                <div class="item-main">
+                  <span class="item-icon">DFT</span>
+                  <div>
+                    <p class="item-title">Provider par defaut</p>
+                    <p class="item-detail">Auto, local, ZeroBounce ou Abstract.</p>
+                  </div>
+                </div>
+                <select id="defaultProviderInput" class="search-input">
+                  <option value="auto">auto</option>
+                  <option value="local">local</option>
+                  <option value="zerobounce">zerobounce</option>
+                  <option value="abstract">abstract</option>
+                </select>
+              </label>
+
+              <label class="info-item">
+                <div class="item-main">
+                  <span class="item-icon">ZB</span>
+                  <div>
+                    <p class="item-title">ZEROBOUNCE_API_KEY</p>
+                    <p class="item-detail">Verification ZeroBounce.</p>
+                  </div>
+                </div>
+                <input id="zerobounceKeyInput" class="search-input" type="text" autocomplete="off" />
+              </label>
+
+              <label class="info-item">
+                <div class="item-main">
+                  <span class="item-icon">ABS</span>
+                  <div>
+                    <p class="item-title">ABSTRACT_API_KEY</p>
+                    <p class="item-detail">Verification Abstract.</p>
+                  </div>
+                </div>
+                <input id="abstractKeyInput" class="search-input" type="text" autocomplete="off" />
+              </label>
+
+              <label class="info-item">
+                <div class="item-main">
+                  <span class="item-icon">HNT</span>
+                  <div>
+                    <p class="item-title">HUNTER_API_KEY</p>
+                    <p class="item-detail">Domain Search, Finder, Verifier, Enrichment.</p>
+                  </div>
+                </div>
+                <input id="hunterKeyInput" class="search-input" type="text" autocomplete="off" />
+              </label>
+
+              <label class="info-item">
+                <div class="item-main">
+                  <span class="item-icon">GRV</span>
+                  <div>
+                    <p class="item-title">GRAVATAR_API_KEY</p>
+                    <p class="item-detail">Profil public Gravatar API.</p>
+                  </div>
+                </div>
+                <input id="gravatarKeyInput" class="search-input" type="text" autocomplete="off" />
+              </label>
+
+              <div class="button-row">
+                <button id="saveSettingsButton" class="analyze-button" type="submit">
+                  <span class="button-label">Enregistrer</span>
+                </button>
+              </div>
+            </form>
+          </article>
+
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <h2 class="section-title">Etat runtime des providers</h2>
+                <p class="card-subtitle">Permet d'identifier rapidement une cle absente ou invalide.</p>
+              </div>
+              <span class="pill neutral">Runtime</span>
+            </div>
+            <div id="runtimeStatusList" class="info-grid"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="/settings.js"></script>
+  </body>
+</html>

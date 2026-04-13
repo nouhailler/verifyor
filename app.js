@@ -7,7 +7,8 @@
     isDownloadingPdf: false,
     isLoadingHunter: false,
     isLoadingGravatar: false,
-    isLoadingLinkedin: false
+    isLoadingLinkedin: false,
+    settings: null
   };
 
   const elements = {
@@ -15,6 +16,7 @@
     providerSelect: document.getElementById("providerSelect"),
     analyzeButton: document.getElementById("analyzeButton"),
     inputMessage: document.getElementById("inputMessage"),
+    providerWarning: document.getElementById("providerWarning"),
     typoBanner: document.getElementById("typoBanner"),
     typoText: document.getElementById("typoText"),
     applyTypoButton: document.getElementById("applyTypoButton"),
@@ -217,6 +219,40 @@
 
     elements.inputMessage.textContent = "Format valide. Verification prete.";
     elements.inputMessage.className = "inline-note";
+  }
+
+  function renderProviderWarning() {
+    const selected = elements.providerSelect.value || "auto";
+    const settings = state.settings;
+
+    if (!settings || !settings.runtime) {
+      elements.providerWarning.textContent = "";
+      elements.providerWarning.className = "inline-note hidden";
+      return;
+    }
+
+    if (selected === "abstract") {
+      if (!settings.abstract_api_key) {
+        elements.providerWarning.textContent = "ABSTRACT_API_KEY absente. Configure-la dans Parametrage, puis redemarre l'application.";
+        elements.providerWarning.className = "inline-note error";
+        return;
+      }
+
+      if (settings.runtime.abstract && !settings.runtime.abstract.ok && settings.runtime.abstract.last_error) {
+        elements.providerWarning.textContent = `Abstract en erreur: ${settings.runtime.abstract.last_error}`;
+        elements.providerWarning.className = "inline-note error";
+        return;
+      }
+    }
+
+    if (selected === "auto" && !settings.abstract_api_key) {
+      elements.providerWarning.textContent = "Mode auto: Abstract n'est pas configure. Le moteur utilisera ZeroBounce si disponible, sinon fallback local.";
+      elements.providerWarning.className = "inline-note";
+      return;
+    }
+
+    elements.providerWarning.textContent = "";
+    elements.providerWarning.className = "inline-note hidden";
   }
 
   function renderTypoBanner(result) {
@@ -723,6 +759,22 @@
     }
   }
 
+  async function loadSettingsStatus() {
+    try {
+      const response = await fetch("/api/settings", {
+        headers: {
+          Accept: "application/json"
+        }
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) return;
+      state.settings = payload;
+      renderProviderWarning();
+    } catch (error) {
+      // Ignore settings status failures on the main page.
+    }
+  }
+
   async function fetchRecentAnalyses() {
     const response = await fetch("/api/analyses?limit=5", {
       headers: {
@@ -1204,6 +1256,7 @@
   }
 
   elements.emailInput.addEventListener("input", handleInputChange);
+  elements.providerSelect.addEventListener("change", renderProviderWarning);
   elements.analyzeButton.addEventListener("click", () => runAnalysis());
   elements.emailInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !elements.analyzeButton.disabled) {
@@ -1228,6 +1281,7 @@
   });
 
   loadProviders();
+  loadSettingsStatus();
   refreshDashboardSnapshot();
   updateInputState();
 })();

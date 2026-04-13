@@ -391,6 +391,10 @@ test("admin and providers endpoints are exposed", async () => {
     method: "GET",
     url: "/settings"
   });
+  const searchPageResponse = await invokeApp(app, {
+    method: "GET",
+    url: "/search/db"
+  });
 
   assert.equal(providersResponse.statusCode, 200);
   assert.equal(Array.isArray(providersResponse.json.providers), true);
@@ -411,6 +415,128 @@ test("admin and providers endpoints are exposed", async () => {
   assert.match(adminPageResponse.body.toString("utf8"), /Verifyor DB/);
   assert.equal(settingsPageResponse.statusCode, 200);
   assert.match(settingsPageResponse.body.toString("utf8"), /Parametrage/);
+  assert.equal(searchPageResponse.statusCode, 200);
+  assert.match(searchPageResponse.body.toString("utf8"), /Recherche en base de donnees/);
+
+  clearCache();
+  clearAllData();
+});
+
+test("GET /api/admin/search filters analyses by combined payload fields", async () => {
+  clearCache();
+  clearAllData();
+
+  const app = createApp({
+    verificationFetcher: async (email, provider) => {
+      if (email === "patrick.nouhailler@gmail.com") {
+        return {
+          email,
+          status: "valid",
+          sub_status: "valid_email",
+          domain: "gmail.com",
+          mx_found: true,
+          smtp_valid: true,
+          disposable: false,
+          toxic: false,
+          quality_score: 95,
+          quality_score_raw: 0.95,
+          did_you_mean: null,
+          mx_record: "alt3.gmail-smtp-in.l.google.com",
+          provider: "Abstract",
+          free_email: true,
+          firstname: "Patrick",
+          lastname: "Nouhailler",
+          full_name: "Patrick Nouhailler",
+          email_type: "personal",
+          company_domain: null,
+          provider_type: "free",
+          domain_age_estimate: "old",
+          risk_level: "low",
+          risk: "low",
+          cached: false,
+          provider_message: null,
+          syntax: true,
+          mx: true,
+          smtp: true,
+          score: 95,
+          computedScore: 100,
+          score_source: "abstract",
+          suggestion: null,
+          deliverability: "valid",
+          deliverabilityDetail: "valid_email",
+          mxRecords: ["alt3.gmail-smtp-in.l.google.com"],
+          role: false,
+          verification_provider: provider,
+          verification_method: "api",
+          requested_provider: provider,
+          is_local_fallback: false
+        };
+      }
+
+      return {
+        email,
+        status: "invalid",
+        sub_status: "mailbox_not_found",
+        domain: "other.com",
+        mx_found: false,
+        smtp_valid: false,
+        disposable: false,
+        toxic: false,
+        quality_score: 10,
+        quality_score_raw: 0.1,
+        did_you_mean: null,
+        mx_record: null,
+        provider: "Abstract",
+        free_email: false,
+        firstname: "Other",
+        lastname: "User",
+        full_name: "Other User",
+        email_type: "professional",
+        company_domain: "other.com",
+        provider_type: "corporate",
+        domain_age_estimate: "new",
+        risk_level: "high",
+        risk: "high",
+        cached: false,
+        provider_message: null,
+        syntax: true,
+        mx: false,
+        smtp: false,
+        score: 10,
+        computedScore: 10,
+        score_source: "abstract",
+        suggestion: null,
+        deliverability: "invalid",
+        deliverabilityDetail: "mailbox_not_found",
+        mxRecords: [],
+        role: true,
+        verification_provider: provider,
+        verification_method: "api",
+        requested_provider: provider,
+        is_local_fallback: false
+      };
+    }
+  });
+
+  await invokeApp(app, {
+    method: "GET",
+    url: "/api/verify?email=patrick.nouhailler@gmail.com&provider=abstract"
+  });
+  await invokeApp(app, {
+    method: "GET",
+    url: "/api/verify?email=other.user@other.com&provider=abstract"
+  });
+
+  const response = await invokeApp(app, {
+    method: "GET",
+    url: "/api/admin/search?verification_provider=abstract&status=valid&free_email=true&score_min=90&full_name=patrick&mxRecords=gmail-smtp-in&limit=100"
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json.count, 1);
+  assert.equal(response.json.items[0].email, "patrick.nouhailler@gmail.com");
+  assert.equal(response.json.items[0].payload.free_email, true);
+  assert.equal(response.json.items[0].payload.score, 95);
 
   clearCache();
   clearAllData();

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verifyor Recherche DB</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <p class="brand-kicker">Search Console</p>
+          <h1 class="brand-name">Recherche DB</h1>
+          <p class="brand-copy">Filtrage multicritere des analyses sauvegardees en base locale.</p>
+        </div>
+
+        <nav class="nav-group" aria-label="Navigation recherche">
+          <a class="nav-link" href="/">
+            <span class="nav-icon">VR</span>
+            <span>Verification unique</span>
+          </a>
+          <a class="nav-link" href="/admin/db">
+            <span class="nav-icon">SQL</span>
+            <span>Base De donnee</span>
+          </a>
+          <a class="nav-link active" href="/search/db">
+            <span class="nav-icon">FTR</span>
+            <span>Recherche DB</span>
+          </a>
+          <a class="nav-link" href="/settings">
+            <span class="nav-icon">CFG</span>
+            <span>Parametrage</span>
+          </a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h2 class="topbar-title">Recherche en base de donnees</h2>
+            <p class="topbar-subtitle">Filtre sur chaque champ du payload ou sur une combinaison de champs.</p>
+          </div>
+          <div class="topbar-actions">
+            <button id="searchSubmitButtonTop" class="secondary-button" type="button">Lancer la recherche</button>
+          </div>
+        </header>
+
+        <section class="content">
+          <div id="searchStatusBanner" class="status-banner visible loading">
+            <div class="status-main">
+              <span class="status-dot" aria-hidden="true"></span>
+              <p id="searchStatusText" class="status-text">Preparation de la recherche...</p>
+            </div>
+          </div>
+
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <h2 class="section-title">Filtres</h2>
+                <p class="card-subtitle">Les champs texte font une recherche partielle insensible a la casse. Les booleens et numeriques sont filtrables precisement.</p>
+              </div>
+              <span class="pill neutral">Payload JSON</span>
+            </div>
+
+            <form id="searchForm" class="search-filters">
+              <div class="filter-grid dense" id="searchMetaFilters"></div>
+              <div class="filter-grid" id="searchBooleanFilters"></div>
+              <div class="filter-grid" id="searchNumberFilters"></div>
+              <div class="filter-grid" id="searchTextFilters"></div>
+              <div class="button-row">
+                <button id="searchSubmitButton" class="analyze-button" type="submit">
+                  <span class="button-label">Rechercher</span>
+                </button>
+                <button id="searchResetButton" class="secondary-button" type="button">Reinitialiser</button>
+              </div>
+            </form>
+          </article>
+
+          <div class="snapshot-grid">
+            <div class="snapshot-item">
+              <p class="snapshot-kicker">Resultats</p>
+              <strong id="searchCount" class="snapshot-value">0</strong>
+              <p class="snapshot-copy">lignes correspondant aux filtres</p>
+            </div>
+            <div class="snapshot-item">
+              <p class="snapshot-kicker">Fenetre de lecture</p>
+              <strong id="searchLimitLabel" class="snapshot-value">250</strong>
+              <p class="snapshot-copy">dernieres analyses inspectees</p>
+            </div>
+            <div class="snapshot-item">
+              <p class="snapshot-kicker">Dernier resultat</p>
+              <strong id="searchLastActivity" class="snapshot-value" style="font-size:1rem">-</strong>
+              <p class="snapshot-copy">premiere ligne de la liste courante</p>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="card">
+              <div class="section-head">
+                <div>
+                  <h2 class="section-title">Resultats</h2>
+                  <p class="card-subtitle">Chaque ligne est cliquable pour ouvrir le detail complet de la recherche passee.</p>
+                </div>
+                <span class="pill neutral">Filtres combines</span>
+              </div>
+              <div class="results-meta">
+                <p id="searchSummaryText" class="inline-note">Aucune recherche executee.</p>
+              </div>
+              <div id="searchResultsList" class="info-grid"></div>
+            </article>
+
+            <article class="card">
+              <div class="section-head">
+                <div>
+                  <h2 class="section-title">Detail d'une recherche</h2>
+                  <p class="card-subtitle">Affiche les informations detaillees et le payload JSON brut.</p>
+                </div>
+                <span class="pill neutral">Detail</span>
+              </div>
+              <div id="searchResultDetail" class="info-grid">
+                <p class="insight-empty">Aucune recherche selectionnee.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/search-db.js"></script>
+  </body>
+</html>

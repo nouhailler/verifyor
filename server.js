@@ -8,6 +8,7 @@ const {
   getAnalysisById,
   listAdminHistory,
   listRecentAnalyses,
+  searchAnalyses,
   saveAnalysis,
   saveEnrichment
 } = require("./lib/db");
@@ -143,6 +144,10 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
     return res.json(listAdminHistory(limit));
   });
 
+  app.get("/api/admin/search", (req, res) => {
+    return res.json(searchAnalyses(req.query || {}));
+  });
+
   app.get("/api/admin/analyses/:id", (req, res) => {
     const analysis = getAnalysisById(req.params.id);
     if (!analysis) {
@@ -225,6 +230,10 @@ function createApp({ verificationFetcher = fetchEmailVerification } = {}) {
 
   app.get("/admin/db", (req, res) => {
     res.sendFile(path.resolve(__dirname, "admin-db.html"));
+  });
+
+  app.get("/search/db", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "search-db.html"));
   });
 
   app.get("/settings", (req, res) => {

@@ -1,0 +1,10 @@
+Package: verifyor
+Version: __VERSION__
+Section: utils
+Priority: optional
+Architecture: all
+Depends: nodejs (>= 18)
+Maintainer: Nouhailler <noreply@example.com>
+Description: Verifyor email verification and intelligence platform
+ Verifyor provides local and API-backed email verification, B2B enrichment,
+ SQLite history, advanced search, annotations, and PDF reporting.

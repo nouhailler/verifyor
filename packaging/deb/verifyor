@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="/opt/verifyor"
+
+if [[ ! -d "$APP_DIR" ]]; then
+  echo "Verifyor is not installed in $APP_DIR" >&2
+  exit 1
+fi
+
+cd "$APP_DIR"
+exec /usr/bin/node server.js "$@"

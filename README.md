@@ -209,6 +209,22 @@ Le rapport PDF comprend maintenant:
 - sources utilisees
 - tags et note d'analyse
 
+## Paquet Debian
+
+Un paquet Debian peut etre genere localement avec:
+
+```bash
+./scripts/build-deb.sh
+```
+
+Sortie attendue:
+
+```text
+dist/verifyor_2.0.0_all.deb
+```
+
+Le paquet installe l'application dans `/opt/verifyor` et ajoute le lanceur `verifyor`.
+
 ## Tests
 
 ```bash

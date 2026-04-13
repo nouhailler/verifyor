@@ -4,10 +4,11 @@
     currentResult: null,
     retryEmail: "",
     typoSuggestion: null,
-    isDownloadingPdf: false
+    isDownloadingPdf: false,
+    isLoadingHunter: false,
+    isLoadingGravatar: false,
+    isLoadingLinkedin: false
   };
-
-  const historyKey = "verifyor-history";
 
   const elements = {
     emailInput: document.getElementById("emailInput"),
@@ -42,6 +43,15 @@
     recommendationText: document.getElementById("recommendationText"),
     recommendationActions: document.getElementById("recommendationActions"),
     pdfButton: document.getElementById("pdfButton"),
+    summaryAnalyses: document.getElementById("summaryAnalyses"),
+    summaryValid: document.getElementById("summaryValid"),
+    summaryFlagged: document.getElementById("summaryFlagged"),
+    hunterButton: document.getElementById("hunterButton"),
+    hunterInsights: document.getElementById("hunterInsights"),
+    gravatarButton: document.getElementById("gravatarButton"),
+    gravatarInsights: document.getElementById("gravatarInsights"),
+    linkedinButton: document.getElementById("linkedinButton"),
+    linkedinInsights: document.getElementById("linkedinInsights"),
     helpModal: document.getElementById("helpModal"),
     helpTitle: document.getElementById("helpTitle"),
     helpLead: document.getElementById("helpLead"),
@@ -59,48 +69,6 @@
 
   function isValidEmail(email) {
     return emailRegex().test(email);
-  }
-
-  function getSessionJson(key, fallback) {
-    try {
-      const raw = sessionStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (error) {
-      return fallback;
-    }
-  }
-
-  function setSessionJson(key, value) {
-    sessionStorage.setItem(key, JSON.stringify(value));
-  }
-
-  function getHistory() {
-    return getSessionJson(historyKey, []);
-  }
-
-  function saveToHistory(email) {
-    const history = getHistory().filter((entry) => entry !== email);
-    history.unshift(email);
-    setSessionJson(historyKey, history.slice(0, 5));
-    renderHistory();
-  }
-
-  function renderHistory() {
-    const history = getHistory();
-    elements.historyList.innerHTML = "";
-
-    history.forEach((email) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "history-chip";
-      button.textContent = email;
-      button.addEventListener("click", () => {
-        elements.emailInput.value = email;
-        handleInputChange();
-        runAnalysis(email);
-      });
-      elements.historyList.appendChild(button);
-    });
   }
 
   function classForLevel(level) {
@@ -144,6 +112,86 @@
     state.isDownloadingPdf = isLoading;
     elements.pdfButton.disabled = isLoading;
     elements.pdfButton.textContent = isLoading ? "Generation du PDF..." : "Telecharger le rapport PDF complet";
+  }
+
+  function setAsyncButtonLoading(button, isLoading, loadingLabel, idleLabel) {
+    button.disabled = isLoading;
+    button.textContent = isLoading ? loadingLabel : idleLabel;
+  }
+
+  function formatStatus(status) {
+    if (status === "valid") return "Valide";
+    if (status === "invalid") return "Invalide";
+    if (status === "catch-all") return "Catch-all";
+    return status || "Inconnu";
+  }
+
+  function formatDateTime(value) {
+    if (!value) return "Date inconnue";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat("fr-FR", {
+      dateStyle: "short",
+      timeStyle: "short"
+    }).format(date);
+  }
+
+  function renderHistory(items) {
+    if (!items || !items.length) {
+      elements.historyList.innerHTML = '<p class="history-empty">Aucune analyse sauvegardee pour le moment.</p>';
+      return;
+    }
+
+    elements.historyList.innerHTML = "";
+
+    items.forEach((item) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "history-chip";
+      button.innerHTML = `
+        <span class="history-primary">
+          <span class="history-email">${item.email}</span>
+          <span class="history-meta">${formatStatus(item.status)} | score ${item.score ?? "-"} | ${formatDateTime(item.created_at)}</span>
+        </span>
+        <span class="status ${classForLevel(item.risk)}">${item.risk || "n/a"}</span>
+      `;
+      button.addEventListener("click", () => {
+        elements.emailInput.value = item.email;
+        handleInputChange();
+        runAnalysis(item.email);
+      });
+      elements.historyList.appendChild(button);
+    });
+  }
+
+  function renderDashboardSummary(summary) {
+    elements.summaryAnalyses.textContent = String(summary.analyses_count || 0);
+    elements.summaryValid.textContent = String(summary.valid_count || 0);
+    elements.summaryFlagged.textContent = String(summary.flagged_count || 0);
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function safeUrl(value) {
+    if (!value) return null;
+
+    try {
+      const url = new URL(value, window.location.origin);
+      if (url.protocol === "http:" || url.protocol === "https:") {
+        return url.href;
+      }
+    } catch (error) {
+      return null;
+    }
+
+    return null;
   }
 
   function updateInputState() {
@@ -609,6 +657,46 @@
     return payload;
   }
 
+  async function fetchRecentAnalyses() {
+    const response = await fetch("/api/analyses?limit=5", {
+      headers: {
+        Accept: "application/json"
+      }
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || "Impossible de charger les analyses recentes.");
+    }
+
+    return payload.items || [];
+  }
+
+  async function fetchDashboardSummary() {
+    const response = await fetch("/api/dashboard/summary", {
+      headers: {
+        Accept: "application/json"
+      }
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || "Impossible de charger le resume dashboard.");
+    }
+
+    return payload;
+  }
+
+  async function refreshDashboardSnapshot() {
+    try {
+      const [items, summary] = await Promise.all([fetchRecentAnalyses(), fetchDashboardSummary()]);
+      renderHistory(items);
+      renderDashboardSummary(summary);
+    } catch (error) {
+      elements.historyList.innerHTML = `<p class="history-empty">${error.message}</p>`;
+    }
+  }
+
   function filenameFromDisposition(header) {
     if (!header) return "verifyor-report.pdf";
     const match = /filename="([^"]+)"/i.exec(header);
@@ -636,6 +724,27 @@
     };
   }
 
+  async function postIntelligence(endpoint, email, currentResult) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email,
+        currentResult
+      })
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.details || payload.error || "Le chargement d'intelligence a echoue.");
+    }
+
+    return payload;
+  }
+
   function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -645,6 +754,131 @@
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function renderInfoRows(container, rows) {
+    container.innerHTML = rows
+      .map(
+        (row) => `
+          <div class="info-item">
+            <div class="item-main">
+              <span class="item-icon">${escapeHtml(row.icon)}</span>
+              <div>
+                <p class="item-title">${escapeHtml(row.title)}</p>
+                <p class="item-copy">${escapeHtml(row.copy)}</p>
+                ${row.detail ? `<p class="item-detail">${escapeHtml(row.detail)}</p>` : ""}
+              </div>
+            </div>
+            ${row.status ? `<span class="status ${escapeHtml(row.status.kind)}">${escapeHtml(row.status.label)}</span>` : ""}
+          </div>`
+      )
+      .join("");
+  }
+
+  function renderHunterInsights(data) {
+    const contacts = (data.pattern_detection && data.pattern_detection.sample_emails ? data.pattern_detection.sample_emails : [])
+      .slice(0, 3)
+      .map((contact) => `${contact.email || "-"}${contact.position ? ` (${contact.position})` : ""}`)
+      .join(" | ") || "Aucun email source remonte";
+
+    renderInfoRows(elements.hunterInsights, [
+      {
+        icon: "B2B",
+        title: "Entreprise",
+        copy: data.company.name || "Societe inconnue",
+        detail: [data.company.industry, data.company.location, data.company.domain].filter(Boolean).join(" | "),
+        status: { label: data.company.domain || "n/a", kind: "success" }
+      },
+      {
+        icon: "PAT",
+        title: "Pattern detection",
+        copy: data.pattern_detection.pattern || "Pattern non remonte",
+        detail: `Exemples trouves: ${contacts}`,
+        status: { label: data.pattern_detection.organization || "Pattern", kind: "warning" }
+      },
+      {
+        icon: "DLV",
+        title: "Deliverability Hunter",
+        copy: data.deliverability.result || "Inconnu",
+        detail: `Score: ${data.deliverability.score ?? "-"} | Status: ${data.deliverability.status || "-"}`,
+        status: {
+          label: data.deliverability.result || "n/a",
+          kind: data.deliverability.result === "deliverable" || data.deliverability.result === "valid" ? "success" : "warning"
+        }
+      },
+      {
+        icon: "PRS",
+        title: "Personne enrichie",
+        copy: data.person.full_name || "Unknown user",
+        detail: `Titre: ${data.person.title || "-"}${data.person.linkedin_url ? ` | LinkedIn: ${data.person.linkedin_url}` : ""}`,
+        status: { label: data.emailFinder.email || data.email, kind: "success" }
+      }
+    ]);
+  }
+
+  function renderGravatarInsights(data) {
+    if (!data.public_profile) {
+      elements.gravatarInsights.innerHTML = `
+        <p class="insight-empty">Aucun profil public Gravatar trouve pour ${escapeHtml(data.email)}.</p>
+      `;
+      return;
+    }
+
+    const verified = (data.verified_accounts || [])
+      .slice(0, 4)
+      .map((account) => account.service_label || account.service_type || account.url)
+      .filter(Boolean)
+      .join(" | ");
+    const profileUrl = safeUrl(data.profile_url);
+    const photoUrl = safeUrl(data.photo_url);
+
+    elements.gravatarInsights.innerHTML = `
+      <div class="avatar-tile">
+        ${photoUrl ? `<img class="avatar-image" src="${photoUrl}" alt="Avatar Gravatar" />` : '<div class="avatar-image"></div>'}
+        <div>
+          <p class="item-title">${escapeHtml(data.full_name || "Profil public sans nom")}</p>
+          <p class="item-copy">${escapeHtml(`${data.job_title || "Aucun poste public"}${data.company ? ` | ${data.company}` : ""}`)}</p>
+          <p class="item-detail">${escapeHtml(data.location || "Localisation non publique")}</p>
+        </div>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">URL</span>
+          <div>
+            <p class="item-title">Profil public</p>
+            <p class="item-copy">${profileUrl ? `<a class="link-action" href="${profileUrl}" target="_blank" rel="noreferrer">Ouvrir le profil</a>` : "Aucun lien public"}</p>
+            <p class="item-detail">${escapeHtml(verified || data.source_note)}</p>
+          </div>
+        </div>
+        <span class="status success">Public</span>
+      </div>
+    `;
+  }
+
+  function renderLinkedinInsights(data) {
+    const photoUrl = safeUrl(data.photo_url);
+    const linkedinUrl = safeUrl(data.linkedin_url);
+    elements.linkedinInsights.innerHTML = `
+      <div class="avatar-tile">
+        ${photoUrl ? `<img class="avatar-image" src="${photoUrl}" alt="Photo du matching" />` : '<div class="avatar-image"></div>'}
+        <div>
+          <p class="item-title">${escapeHtml(data.full_name || "Aucun nom fiable")}</p>
+          <p class="item-copy">${escapeHtml(`${data.job_title || "Poste non remonte"}${data.company ? ` | ${data.company}` : ""}`)}</p>
+          <p class="item-detail">${linkedinUrl ? `<a class="link-action" href="${linkedinUrl}" target="_blank" rel="noreferrer">Voir le profil LinkedIn suggere</a>` : "Aucun profil LinkedIn public fiable remonte."}</p>
+        </div>
+      </div>
+      <div class="info-item">
+        <div class="item-main">
+          <span class="item-icon">SIG</span>
+          <div>
+            <p class="item-title">Confiance du matching</p>
+            <p class="item-copy">${escapeHtml(data.confidence)}</p>
+            <p class="item-detail">${escapeHtml(data.source_note)}</p>
+          </div>
+        </div>
+        <span class="status ${data.confidence === "medium" ? "warning" : data.confidence === "low" ? "pending" : "error"}">${escapeHtml(data.confidence)}</span>
+      </div>
+    `;
   }
 
   async function runAnalysis(rawEmail) {
@@ -664,8 +898,8 @@
 
     try {
       const result = await verifyEmail(email);
-      saveToHistory(email);
       renderResult(result);
+      refreshDashboardSnapshot();
     } catch (error) {
       elements.resultsSection.classList.add("hidden");
       elements.typoBanner.classList.remove("visible");
@@ -705,6 +939,69 @@
       setStatusBanner("error", error.message, false);
     } finally {
       setPdfLoading(false);
+    }
+  }
+
+  function requireCurrentResultForIntelligence() {
+    if (state.currentResult) return true;
+    setStatusBanner("error", "Lancez d'abord une analyse email avant d'utiliser les modules d'intelligence.", false);
+    return false;
+  }
+
+  async function handleHunterLookup() {
+    if (!requireCurrentResultForIntelligence()) return;
+
+    state.isLoadingHunter = true;
+    setAsyncButtonLoading(elements.hunterButton, true, "Chargement Hunter...", "B2B email intelligence");
+
+    try {
+      const payload = await postIntelligence("/api/intelligence/hunter", state.currentResult.email, state.currentResult);
+      renderHunterInsights(payload);
+      setStatusBanner("success", `Intelligence B2B chargee pour ${state.currentResult.email}.`, false);
+    } catch (error) {
+      elements.hunterInsights.innerHTML = `<p class="insight-empty">${error.message}</p>`;
+      setStatusBanner("error", error.message, false);
+    } finally {
+      state.isLoadingHunter = false;
+      setAsyncButtonLoading(elements.hunterButton, false, "Chargement Hunter...", "B2B email intelligence");
+    }
+  }
+
+  async function handleGravatarLookup() {
+    if (!requireCurrentResultForIntelligence()) return;
+
+    state.isLoadingGravatar = true;
+    setAsyncButtonLoading(elements.gravatarButton, true, "Chargement Gravatar...", "Gravatar lookup");
+
+    try {
+      const payload = await postIntelligence("/api/intelligence/gravatar", state.currentResult.email, state.currentResult);
+      renderGravatarInsights(payload);
+      setStatusBanner("success", `Lookup Gravatar termine pour ${state.currentResult.email}.`, false);
+    } catch (error) {
+      elements.gravatarInsights.innerHTML = `<p class="insight-empty">${error.message}</p>`;
+      setStatusBanner("error", error.message, false);
+    } finally {
+      state.isLoadingGravatar = false;
+      setAsyncButtonLoading(elements.gravatarButton, false, "Chargement Gravatar...", "Gravatar lookup");
+    }
+  }
+
+  async function handleLinkedinLookup() {
+    if (!requireCurrentResultForIntelligence()) return;
+
+    state.isLoadingLinkedin = true;
+    setAsyncButtonLoading(elements.linkedinButton, true, "Matching en cours...", "LinkedIn matching");
+
+    try {
+      const payload = await postIntelligence("/api/intelligence/linkedin-match", state.currentResult.email, state.currentResult);
+      renderLinkedinInsights(payload);
+      setStatusBanner("success", `Matching LinkedIn calcule pour ${state.currentResult.email}.`, false);
+    } catch (error) {
+      elements.linkedinInsights.innerHTML = `<p class="insight-empty">${error.message}</p>`;
+      setStatusBanner("error", error.message, false);
+    } finally {
+      state.isLoadingLinkedin = false;
+      setAsyncButtonLoading(elements.linkedinButton, false, "Matching en cours...", "LinkedIn matching");
     }
   }
 
@@ -849,6 +1146,9 @@
   elements.applyTypoButton.addEventListener("click", applyTypoCorrection);
   elements.retryButton.addEventListener("click", () => runAnalysis(state.retryEmail));
   elements.pdfButton.addEventListener("click", handlePdfDownload);
+  elements.hunterButton.addEventListener("click", handleHunterLookup);
+  elements.gravatarButton.addEventListener("click", handleGravatarLookup);
+  elements.linkedinButton.addEventListener("click", handleLinkedinLookup);
   elements.helpCloseButton.addEventListener("click", closeHelp);
   elements.helpModal.addEventListener("click", (event) => {
     if (event.target === elements.helpModal) closeHelp();
@@ -860,6 +1160,6 @@
     button.addEventListener("click", () => openHelp(button.dataset.help));
   });
 
-  renderHistory();
+  refreshDashboardSnapshot();
   updateInputState();
 })();

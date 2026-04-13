@@ -6,6 +6,7 @@ const { Duplex } = require("node:stream");
 const {
   buildFrontendPayload,
   buildPdfReport,
+  clearAllData,
   clearCache,
   createApp,
   mapZeroBounceResponse
@@ -231,6 +232,7 @@ test("buildPdfReport returns a PDF buffer", () => {
 
 test("GET /api/verify returns mapped verification data", async () => {
   clearCache();
+  clearAllData();
 
   const app = createApp({
     verificationFetcher: async (email) => ({
@@ -273,6 +275,66 @@ test("GET /api/verify returns mapped verification data", async () => {
   assert.equal(response.json.full_name, "Alice Martin");
 
   clearCache();
+  clearAllData();
+});
+
+test("dashboard endpoints expose persisted analyses", async () => {
+  clearCache();
+  clearAllData();
+
+  const app = createApp({
+    verificationFetcher: async (email) => ({
+      email,
+      status: "valid",
+      sub_status: "",
+      domain: "example.com",
+      mx_found: true,
+      smtp_valid: true,
+      disposable: false,
+      toxic: false,
+      quality_score: 75,
+      quality_score_raw: 75,
+      did_you_mean: null,
+      mx_record: "mx.example.com",
+      provider: "Test SMTP",
+      free_email: false,
+      firstname: "Pat",
+      lastname: "Example",
+      full_name: "Pat Example",
+      email_type: "professional",
+      company_domain: "example.com",
+      provider_type: "corporate",
+      domain_age_estimate: "old",
+      risk_level: "low",
+      risk: "low",
+      cached: false
+    })
+  });
+
+  await invokeApp(app, {
+    method: "GET",
+    url: "/api/verify?email=pat@example.com"
+  });
+
+  const analysesResponse = await invokeApp(app, {
+    method: "GET",
+    url: "/api/analyses?limit=5"
+  });
+  const summaryResponse = await invokeApp(app, {
+    method: "GET",
+    url: "/api/dashboard/summary"
+  });
+
+  assert.equal(analysesResponse.statusCode, 200);
+  assert.equal(Array.isArray(analysesResponse.json.items), true);
+  assert.equal(analysesResponse.json.items[0].email, "pat@example.com");
+
+  assert.equal(summaryResponse.statusCode, 200);
+  assert.equal(summaryResponse.json.analyses_count >= 1, true);
+  assert.equal(summaryResponse.json.valid_count >= 1, true);
+
+  clearCache();
+  clearAllData();
 });
 
 test("POST /api/report/pdf returns an application/pdf response", async () => {

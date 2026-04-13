@@ -1,6 +1,6 @@
 # Verifyor
 
-Verifyor est un MVP de verification d'adresses email construit en Node.js avec un backend Express et une interface statique en HTML/CSS/JS.
+Verifyor est une application de verification et d'intelligence email construite en Node.js avec un backend Express, une interface statique HTML/CSS/JS et une persistance SQLite locale.
 
 L'application prend une adresse email, interroge ZeroBounce cote serveur, puis affiche une synthese exploitable dans une interface dashboard: delivrabilite, score, risque, suggestion de correction, type d'adresse et quelques enrichissements heuristiques.
 
@@ -9,14 +9,22 @@ L'application prend une adresse email, interroge ZeroBounce cote serveur, puis a
 - Node.js
 - Express
 - dotenv
+- SQLite locale via `node:sqlite`
 - frontend statique sans framework
 - ZeroBounce pour la verification email
+- Hunter pour l'intelligence B2B
+- Gravatar pour les profils publics
 
 ## Structure
 
-- [server.js](/home/homardsheriff/codex-workspace/verifyor/server.js): serveur Express, endpoint API, appel ZeroBounce, cache memoire, mapping des reponses
+- [server.js](/home/homardsheriff/codex-workspace/verifyor/server.js): bootstrap HTTP et routes Express
 - [app.js](/home/homardsheriff/codex-workspace/verifyor/app.js): logique frontend, fetch API, rendu des resultats, historique, aide contextuelle
-- [index.html](/home/homardsheriff/codex-workspace/verifyor/index.html): page unique, structure UI et styles
+- [index.html](/home/homardsheriff/codex-workspace/verifyor/index.html): page unique et structure UI
+- [styles.css](/home/homardsheriff/codex-workspace/verifyor/styles.css): styles extraits du HTML
+- [lib/db.js](/home/homardsheriff/codex-workspace/verifyor/lib/db.js): persistence SQLite dashboard et enrichissements
+- [services/verification-service.js](/home/homardsheriff/codex-workspace/verifyor/services/verification-service.js): logique ZeroBounce et enrichissements email
+- [services/report-service.js](/home/homardsheriff/codex-workspace/verifyor/services/report-service.js): generation PDF
+- [services/intelligence-service.js](/home/homardsheriff/codex-workspace/verifyor/services/intelligence-service.js): Hunter, Gravatar et matching LinkedIn pragmatique
 - [test/server.test.js](/home/homardsheriff/codex-workspace/verifyor/test/server.test.js): tests backend et endpoints Express
 - [CONTEXT.md](/home/homardsheriff/codex-workspace/verifyor/CONTEXT.md): etat detaille du projet et points d'attention
 
@@ -26,6 +34,8 @@ Prerequis:
 
 - Node.js 18+ recommande
 - une cle API ZeroBounce
+- optionnel: une cle API Hunter
+- optionnel: une cle API Gravatar
 
 Installation locale:
 
@@ -39,6 +49,8 @@ Puis renseigner dans `.env`:
 ```env
 PORT=3000
 ZEROBOUNCE_API_KEY=your_zerobounce_api_key
+HUNTER_API_KEY=test-api-key
+GRAVATAR_API_KEY=
 ```
 
 ## Lancement
@@ -68,6 +80,16 @@ POST /api/report/pdf
 Content-Type: application/json
 ```
 
+et des endpoints d'intelligence:
+
+```http
+GET  /api/analyses?limit=5
+GET  /api/dashboard/summary
+POST /api/intelligence/hunter
+POST /api/intelligence/gravatar
+POST /api/intelligence/linkedin-match
+```
+
 Exemples de champs renvoyes:
 
 - `status`
@@ -90,18 +112,20 @@ Exemples de champs renvoyes:
 - verification reelle via ZeroBounce
 - cache serveur en memoire sur 5 minutes
 - suggestion de correction si ZeroBounce renvoie `did_you_mean`
-- historique local de session sur 5 recherches
+- sauvegarde des analyses en SQLite et affichage sur le dashboard
 - vue dashboard avec sections techniques et metier
 - enrichissement heuristique du profil et du risque
 - export PDF reel cote serveur depuis le resultat courant
+- bouton `B2B email intelligence` alimente par Hunter
+- bouton `Gravatar lookup` pour avatar et profil public
+- bouton `LinkedIn matching` base sur des signaux publics disponibles
 - tests backend via `node --test`
 
 ## Limites actuelles
 
-- pas de base de donnees
 - pas d'authentification
-- cache non persistant
 - plusieurs enrichissements sont heuristiques et pas garantis
+- le matching LinkedIn n'utilise pas une API officielle de recherche arbitraire
 
 ## Securite
 
@@ -117,7 +141,6 @@ npm test
 
 ## Prochaines etapes probables
 
-- separer davantage le CSS et le HTML
-- extraire la logique metier du fichier `server.js`
 - enrichir la suite de tests frontend et end-to-end
 - ameliorer la qualite des enrichissements
+- ajouter une vraie auth et des permissions

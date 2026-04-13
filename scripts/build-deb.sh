@@ -36,5 +36,10 @@ cp -R \
   "${ROOT_DIR}/node_modules" \
   "${APP_DIR}/"
 
+# Keep the runtime package lean by dropping dependency test fixtures and caches.
+find "${APP_DIR}/node_modules" -type d \( -name test -o -name tests -o -name __tests__ \) -prune -exec rm -rf {} +
+find "${APP_DIR}/node_modules" -type f \( -name "*.map" -o -name ".DS_Store" \) -delete
+rm -f "${APP_DIR}/node_modules/.package-lock.json"
+
 dpkg-deb --build "${PKG_DIR}" "${OUTPUT_DEB}" >/dev/null
 echo "${OUTPUT_DEB}"

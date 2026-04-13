@@ -1,8 +1,47 @@
-# Verifyor
+# Verifyor 2.0.0
 
-Verifyor est une application de verification et d'intelligence email construite en Node.js avec un backend Express, une interface statique HTML/CSS/JS et une persistance SQLite locale.
+Verifyor est une plateforme locale de verification et d'intelligence email. Elle combine plusieurs providers externes, un moteur local DNS/MX/SMTP, une persistance SQLite, un dashboard d'analyse, une recherche avancée en base et des modules d'enrichissement B2B/social.
 
-L'application prend une adresse email, interroge ZeroBounce cote serveur, puis affiche une synthese exploitable dans une interface dashboard: delivrabilite, score, risque, suggestion de correction, type d'adresse et quelques enrichissements heuristiques.
+L'objectif n'est plus seulement de dire si une adresse semble valide, mais d'expliquer pourquoi, avec des sous-scores, des signaux techniques, des drapeaux de risque et un contexte metier exploitable.
+
+## Principales fonctionnalites
+
+- verification email via `ZeroBounce`, `Abstract`, ou moteur `local`
+- mode `auto` avec fallback automatique vers le moteur local
+- verification locale avec DNS/MX, analyse DNS et tentative de SMTP handshake avance
+- classification SMTP: `mailbox_exists`, `accept_all`, `greylisting`, `tempfail`, `mailbox_not_found`, `smtp_unreachable`
+- detection `catch-all probable`
+- analyse DNS et securite de domaine: `SPF`, `DKIM`, `DMARC`, `BIMI`, `MTA-STS`, `TLS-RPT`
+- typologie de domaine: domaine parque, domaine sans site web, MX incoherents, domaine estime recent
+- score explicable avec sous-scores:
+  - `deliverability`
+  - `fraud_risk`
+  - `identity_confidence`
+  - `domain_trust`
+- niveau de confiance: `high confidence`, `medium confidence`, `low confidence`
+- enrichissement B2B via Hunter:
+  - recherche par domaine
+  - pattern detection
+  - emails publics probables
+  - enrichissement entreprise
+  - segmentation entreprise
+  - technologies et signaux de recrutement quand disponibles
+- enrichissement social:
+  - `Gravatar lookup`
+  - `LinkedIn matching`
+  - profils sociaux publics consolides quand disponibles
+- annotations manuelles:
+  - tags
+  - note libre sur une analyse
+- export PDF enrichi:
+  - synthese executive
+  - drapeaux de risque
+  - sous-scores
+  - sources utilisees
+  - annotations
+- historique SQLite local
+- page admin DB
+- page de recherche DB multi-criteres
 
 ## Stack
 
@@ -10,34 +49,39 @@ L'application prend une adresse email, interroge ZeroBounce cote serveur, puis a
 - Express
 - dotenv
 - SQLite locale via `node:sqlite`
-- frontend statique sans framework
-- ZeroBounce pour la verification email
-- Abstract pour la verification email alternative
-- Hunter pour l'intelligence B2B
-- Gravatar pour les profils publics
+- frontend statique HTML / CSS / JS
+- ZeroBounce
+- Abstract
+- Hunter
+- Gravatar
 
 ## Structure
 
 - [server.js](/home/homardsheriff/codex-workspace/verifyor/server.js): bootstrap HTTP et routes Express
-- [app.js](/home/homardsheriff/codex-workspace/verifyor/app.js): logique frontend, fetch API, rendu des resultats, historique, aide contextuelle
-- [index.html](/home/homardsheriff/codex-workspace/verifyor/index.html): page unique et structure UI
-- [styles.css](/home/homardsheriff/codex-workspace/verifyor/styles.css): styles extraits du HTML
-- [lib/db.js](/home/homardsheriff/codex-workspace/verifyor/lib/db.js): persistence SQLite dashboard et enrichissements
-- [services/verification-service.js](/home/homardsheriff/codex-workspace/verifyor/services/verification-service.js): logique ZeroBounce et enrichissements email
+- [app.js](/home/homardsheriff/codex-workspace/verifyor/app.js): logique frontend principale
+- [index.html](/home/homardsheriff/codex-workspace/verifyor/index.html): dashboard principal
+- [search-db.html](/home/homardsheriff/codex-workspace/verifyor/search-db.html): recherche en base
+- [search-db.js](/home/homardsheriff/codex-workspace/verifyor/search-db.js): filtres multi-champs et detail inline
+- [admin-db.html](/home/homardsheriff/codex-workspace/verifyor/admin-db.html): consultation de la base
+- [admin-db.js](/home/homardsheriff/codex-workspace/verifyor/admin-db.js): historique et detail admin
+- [settings.html](/home/homardsheriff/codex-workspace/verifyor/settings.html): configuration locale
+- [settings.js](/home/homardsheriff/codex-workspace/verifyor/settings.js): logique de parametrage
+- [styles.css](/home/homardsheriff/codex-workspace/verifyor/styles.css): styles globaux
+- [lib/db.js](/home/homardsheriff/codex-workspace/verifyor/lib/db.js): persistence SQLite, historique, recherche, annotations
+- [lib/settings.js](/home/homardsheriff/codex-workspace/verifyor/lib/settings.js): lecture/ecriture de `.env`
+- [services/verification-service.js](/home/homardsheriff/codex-workspace/verifyor/services/verification-service.js): verification email, DNS, SMTP, scoring
+- [services/intelligence-service.js](/home/homardsheriff/codex-workspace/verifyor/services/intelligence-service.js): Hunter, Gravatar, LinkedIn matching
 - [services/report-service.js](/home/homardsheriff/codex-workspace/verifyor/services/report-service.js): generation PDF
-- [services/intelligence-service.js](/home/homardsheriff/codex-workspace/verifyor/services/intelligence-service.js): Hunter, Gravatar et matching LinkedIn pragmatique
-- [test/server.test.js](/home/homardsheriff/codex-workspace/verifyor/test/server.test.js): tests backend et endpoints Express
-- [CONTEXT.md](/home/homardsheriff/codex-workspace/verifyor/CONTEXT.md): etat detaille du projet et points d'attention
+- [services/provider-status.js](/home/homardsheriff/codex-workspace/verifyor/services/provider-status.js): etat runtime des providers
+- [test/server.test.js](/home/homardsheriff/codex-workspace/verifyor/test/server.test.js): tests backend
+- [CONTEXT.md](/home/homardsheriff/codex-workspace/verifyor/CONTEXT.md): contexte de reprise
 
 ## Installation
 
 Prerequis:
 
 - Node.js 18+ recommande
-- une cle API ZeroBounce
-- optionnel: une cle API Hunter
-- optionnel: une cle API Gravatar
-- optionnel: une cle API Abstract
+- cles API optionnelles selon les modules utilises
 
 Installation locale:
 
@@ -46,14 +90,14 @@ npm install
 cp .env.example .env
 ```
 
-Puis renseigner dans `.env`:
+Exemple de configuration:
 
 ```env
 PORT=3000
-ZEROBOUNCE_API_KEY=your_zerobounce_api_key
+ZEROBOUNCE_API_KEY=
+ABSTRACT_API_KEY=
 HUNTER_API_KEY=test-api-key
 GRAVATAR_API_KEY=
-ABSTRACT_API_KEY=
 VERIFYOR_DEFAULT_PROVIDER=auto
 ```
 
@@ -63,92 +107,107 @@ VERIFYOR_DEFAULT_PROVIDER=auto
 npm start
 ```
 
-Ensuite ouvrir:
+Applications disponibles:
+
+- `http://localhost:3000/`
+- `http://localhost:3000/admin/db`
+- `http://localhost:3000/search/db`
+- `http://localhost:3000/settings`
+
+## Base de donnees
+
+Base SQLite locale par defaut:
 
 ```text
-http://localhost:3000
+data/verifyor.sqlite
 ```
 
-## API
+Tu peux changer le chemin avec:
 
-Le backend expose un endpoint:
-
-```http
-GET /api/verify?email=user@example.com
+```env
+VERIFYOR_DB_PATH=/chemin/vers/verifyor.sqlite
 ```
 
-et un endpoint d'export:
+## Providers de verification
+
+Verifyor supporte 4 modes:
+
+- `auto`
+- `local`
+- `zerobounce`
+- `abstract`
+
+Le mode `auto` essaie:
+
+1. `ZeroBounce`
+2. `Abstract`
+3. `local`
+
+Si les APIs externes ne sont pas disponibles ou que les cles sont invalides, Verifyor degrade vers le moteur local et l'indique explicitement dans l'UI.
+
+## Endpoints principaux
+
+Verification et dashboard:
 
 ```http
-POST /api/report/pdf
-Content-Type: application/json
-```
-
-et des endpoints d'intelligence:
-
-```http
+GET  /api/verify?email=user@example.com&provider=auto
 GET  /api/analyses?limit=5
 GET  /api/dashboard/summary
 GET  /api/verification/providers
+```
+
+Administration et recherche:
+
+```http
 GET  /api/admin/history?limit=100
+GET  /api/admin/analyses/:id
+POST /api/admin/analyses/:id/annotations
+GET  /api/admin/search?...filtres...
+```
+
+Intelligence:
+
+```http
 POST /api/intelligence/hunter
 POST /api/intelligence/gravatar
 POST /api/intelligence/linkedin-match
 ```
 
-Page d'administration:
+Configuration et export:
 
-```text
-/admin/db
+```http
+GET  /api/settings
+POST /api/settings
+POST /api/report/pdf
 ```
 
-Exemples de champs renvoyes:
+## Recherche DB
 
-- `status`
-- `sub_status`
-- `mx_found`
-- `smtp_valid`
-- `quality_score`
-- `score`
-- `risk`
-- `did_you_mean`
-- `email_type`
-- `provider_type`
-- `firstname`
-- `lastname`
-- `full_name`
+La page `/search/db` permet de filtrer les analyses sur un champ ou une combinaison de champs, notamment:
 
-## Fonctionnalites actuelles
+- provider de verification
+- statut et sous-statut
+- domaine
+- noms
+- flags booleens
+- scores exacts ou par bornes min/max
+- recherche libre dans le payload JSON
+- dates
 
-- validation email cote client et cote serveur
-- verification reelle via ZeroBounce
-- verification alternative via Abstract
-- verification locale DNS/MX sans API externe
-- mode `auto` qui essaie ZeroBounce, puis Abstract, puis fallback local
-- cache serveur en memoire sur 5 minutes
-- suggestion de correction si ZeroBounce renvoie `did_you_mean`
-- sauvegarde des analyses en SQLite et affichage sur le dashboard
-- vue dashboard avec sections techniques et metier
-- enrichissement heuristique du profil et du risque
-- export PDF reel cote serveur depuis le resultat courant
-- bouton `B2B email intelligence` alimente par Hunter
-- bouton `Gravatar lookup` pour avatar et profil public
-- bouton `LinkedIn matching` base sur des signaux publics disponibles
-- page `/admin/db` pour consulter la base et l'historique des recherches
-- tests backend via `node --test`
+Chaque resultat est cliquable et affiche un detail inline avec une lecture humaine du payload.
 
-## Limites actuelles
+## PDF
 
-- pas d'authentification
-- plusieurs enrichissements sont heuristiques et pas garantis
-- le matching LinkedIn n'utilise pas une API officielle de recherche arbitraire
-- le mode local DNS/MX ne remplace pas une verification SMTP ou une reputation provider
+Le rapport PDF comprend maintenant:
 
-## Securite
-
-- `.env` est ignore par git et ne doit pas etre committe
-- seule la cle de demonstration dans `.env.example` doit rester versionnee
-- si une vraie cle a deja ete exposee hors machine locale, il faut la faire tourner
+- synthese executive
+- niveau de confiance
+- drapeaux de risque
+- details techniques
+- sous-scores
+- signaux DNS / SMTP
+- sources utilisees
+- tags et note d'analyse
 
 ## Tests
 
@@ -156,8 +215,20 @@ Exemples de champs renvoyes:
 npm test
 ```
 
-## Prochaines etapes probables
+## Limites connues
 
-- enrichir la suite de tests frontend et end-to-end
-- ameliorer la qualite des enrichissements
-- ajouter une vraie auth et des permissions
+- le `SMTP handshake avance` depend du reseau local et de l'acces sortant au port `25`
+- certains enrichissements externes dependent du plan API et des credits restants
+- le matching LinkedIn reste indirect et n'utilise pas une API officielle de recherche arbitraire
+- plusieurs enrichissements B2B/social restent opportunistes: ils fonctionnent quand des signaux publics existent
+- `node:sqlite` reste marque experimental par Node.js
+
+## Securite
+
+- `.env` est ignore par Git
+- ne jamais committer une vraie cle API
+- si une vraie cle a circule hors machine locale, il faut la faire tourner
+
+## Release
+
+Cette version correspond a `2.0.0`.

@@ -1,10 +1,26 @@
 Package: verifyor
 Version: __VERSION__
-Section: utils
+Section: net
 Priority: optional
 Architecture: all
 Depends: nodejs (>= 18)
-Maintainer: Verifyor Maintainers <noreply@example.com>
-Description: Verifyor email verification and intelligence platform
- Verifyor provides local and API-backed email verification, B2B enrichment,
- SQLite history, advanced search, annotations, and PDF reporting.
+Installed-Size: 15000
+Maintainer: Verifyor Maintainers <noreply@github.com>
+Homepage: https://github.com/nouhailler/verifyor
+Description: Plateforme locale de vérification et d'intelligence email
+ Verifyor vérifie les adresses email via plusieurs providers (ZeroBounce,
+ Abstract, moteur local DNS/MX/SMTP) et explique pourquoi une adresse est
+ valide ou non, grâce à des sous-scores, des signaux techniques et un
+ contexte métier exploitable.
+ .
+ Fonctionnalités principales :
+  - Vérification locale DNS/MX + SMTP handshake avancé (sans clé API)
+  - Fallback automatique entre providers cloud et moteur local
+  - Analyse DNS de sécurité : SPF, DKIM, DMARC, BIMI, MTA-STS, TLS-RPT
+  - Score explicable avec sous-scores deliverability, fraud_risk,
+    identity_confidence et domain_trust
+  - Enrichissement B2B via Hunter.io
+  - Enrichissement social via Gravatar et LinkedIn matching
+  - Annotations manuelles (tags, notes) et historique SQLite local
+  - Export PDF enrichi
+  - Interface web locale avec dashboard, admin et recherche multi-critères

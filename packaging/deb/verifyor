@@ -8,5 +8,15 @@ if [[ ! -d "$APP_DIR" ]]; then
   exit 1
 fi
 
+# Option --open : ouvrir le navigateur après démarrage
+OPEN_BROWSER=false
+for arg in "$@"; do
+  [[ "$arg" == "--open" ]] && OPEN_BROWSER=true
+done
+
+if $OPEN_BROWSER; then
+  (sleep 2 && xdg-open "http://localhost:3000" 2>/dev/null || true) &
+fi
+
 cd "$APP_DIR"
-exec /usr/bin/node server.js "$@"
+exec /usr/bin/node server.js

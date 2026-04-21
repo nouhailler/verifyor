@@ -1,0 +1,52 @@
+#!/bin/bash
+set -e
+
+APP_DIR="/opt/verifyor"
+DATA_DIR="/var/lib/verifyor"
+ENV_FILE="${APP_DIR}/.env"
+
+# ── Créer le répertoire de données persistant ──────────────────────────────
+if [ ! -d "${DATA_DIR}" ]; then
+    mkdir -p "${DATA_DIR}"
+    chmod 755 "${DATA_DIR}"
+fi
+
+# ── Pointer la base SQLite vers /var/lib/verifyor ─────────────────────────
+if [ ! -f "${ENV_FILE}" ] && [ -f "${APP_DIR}/.env.example" ]; then
+    cp "${APP_DIR}/.env.example" "${ENV_FILE}"
+fi
+
+# Injecter VERIFYOR_DB_PATH si absent du .env
+if [ -f "${ENV_FILE}" ] && ! grep -q "VERIFYOR_DB_PATH" "${ENV_FILE}"; then
+    echo "VERIFYOR_DB_PATH=${DATA_DIR}/verifyor.sqlite" >> "${ENV_FILE}"
+fi
+
+# ── Mettre à jour le cache des icônes ─────────────────────────────────────
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
+fi
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+fi
+
+# ── Message de bienvenue ───────────────────────────────────────────────────
+echo ""
+echo "┌──────────────────────────────────────────────────────┐"
+echo "│              Verifyor installé avec succès            │"
+echo "├──────────────────────────────────────────────────────┤"
+echo "│                                                        │"
+echo "│  1. Configurer vos clés API :                          │"
+echo "│     sudo nano /opt/verifyor/.env                       │"
+echo "│                                                        │"
+echo "│  2. Démarrer l'application :                           │"
+echo "│     verifyor                                           │"
+echo "│                                                        │"
+echo "│  3. Ouvrir dans le navigateur :                        │"
+echo "│     http://localhost:3000                              │"
+echo "│                                                        │"
+echo "│  Guide complet : /opt/verifyor/INSTALL.md              │"
+echo "└──────────────────────────────────────────────────────┘"
+echo ""
+
+exit 0

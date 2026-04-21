@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2b3c;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#041627;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="envGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#eef4ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d2e4fb;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00a651;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#006d37;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000033"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="128" height="128" rx="22" ry="22" fill="url(#bgGrad)"/>
+
+  <!-- Envelope body -->
+  <rect x="16" y="38" width="80" height="54" rx="6" ry="6" fill="url(#envGrad)" filter="url(#shadow)"/>
+
+  <!-- Envelope flap (triangle) -->
+  <path d="M16 44 L56 72 L96 44" fill="none" stroke="#1a2b3c" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Envelope fold lines bottom -->
+  <path d="M16 92 L42 68 M96 92 L70 68" fill="none" stroke="#aac8f0" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Shield background (verification badge) -->
+  <path d="M84 60 C84 60 112 64 112 80 C112 96 98 106 84 112 C70 106 56 96 56 80 C56 64 84 60 84 60 Z"
+        fill="url(#shieldGrad)" filter="url(#shadow)"/>
+
+  <!-- Checkmark inside shield -->
+  <polyline points="69,82 79,92 101,70"
+            fill="none" stroke="#ffffff" stroke-width="5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

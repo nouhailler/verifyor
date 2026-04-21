@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Verifyor
+GenericName=Email Verification Platform
+Comment=Vérification et intelligence email locale — DNS/MX/SMTP, scoring, B2B, PDF
+Exec=/usr/bin/verifyor --open
+Icon=verifyor
+Terminal=false
+StartupNotify=true
+Categories=Network;Office;Utility;
+Keywords=email;verification;dns;smtp;intelligence;zerobounce;b2b;
+MimeType=

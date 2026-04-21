@@ -1,8 +1,11 @@
 # Verifyor — Dépendances Node.js
 # Projet : plateforme de vérification et d'intelligence email
-# Runtime : Node.js >= 18 (LTS recommandé)
 #
-# Ce fichier documente toutes les dépendances du projet.
+# ⚠️  Runtime requis : Node.js >= 22.5.0
+#     Raison : node:sqlite est un module natif disponible uniquement
+#     à partir de Node.js 22.5.0 (introduit expérimentalement en 22.5).
+#     Les versions 18, 20 et 21 ne sont PAS compatibles.
+#
 # Les dépendances npm sont gérées via package.json / package-lock.json.
 # Installer avec : npm install
 
@@ -14,15 +17,15 @@ express@^4.21.2          # Framework HTTP — routage, middleware, service de fi
 dotenv@^16.4.5           # Chargement des variables d'environnement depuis .env
 
 # ─────────────────────────────────────────────
-#  MODULES NATIFS NODE.JS (inclus dans Node >= 18)
+#  MODULES NATIFS NODE.JS
 # ─────────────────────────────────────────────
 
-node:dns/promises        # Résolution DNS asynchrone — MX, TXT, NS, SPF, DMARC
-node:net                 # Sockets TCP — SMTP handshake avancé
-node:crypto              # Hash SHA-256 — lookup Gravatar
-node:fs                  # Lecture/écriture fichiers — .env, base SQLite
-node:path                # Résolution de chemins cross-platform
-node:sqlite              # Base de données SQLite embarquée (expérimental Node 22+)
+node:dns/promises        # Résolution DNS asynchrone — MX, TXT, NS, SPF, DMARC  (Node >= 16)
+node:net                 # Sockets TCP — SMTP handshake avancé                   (Node >= 0.10)
+node:crypto              # Hash SHA-256 — lookup Gravatar                         (Node >= 0.10)
+node:fs                  # Lecture/écriture fichiers — .env, base SQLite          (Node >= 0.10)
+node:path                # Résolution de chemins cross-platform                   (Node >= 0.10)
+node:sqlite              # Base de données SQLite embarquée                       (Node >= 22.5.0 ⚠️)
 
 # ─────────────────────────────────────────────
 #  SERVICES EXTERNES (clés API optionnelles)
@@ -45,9 +48,9 @@ node:sqlite              # Base de données SQLite embarquée (expérimental Nod
 #   Usage         : enrichissement social — avatar et profil public associés à l'email
 
 # ─────────────────────────────────────────────
-#  RÉSUMÉ DES VERSIONS MINIMALES
+#  VERSIONS MINIMALES REQUISES
 # ─────────────────────────────────────────────
 
-# Node.js  >= 18.0.0   (LTS — pour node:sqlite >= 22.5.0 requis)
+# Node.js  >= 22.5.0   ⚠️  OBLIGATOIRE (node:sqlite disponible uniquement depuis 22.5)
 # npm      >= 8.0.0
 # dpkg     >= 1.18      (pour construire le paquet Debian uniquement)

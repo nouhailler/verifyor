@@ -3,7 +3,7 @@ Version: __VERSION__
 Section: net
 Priority: optional
 Architecture: all
-Depends: nodejs (>= 18)
+Depends: nodejs (>= 22)
 Installed-Size: 15000
 Maintainer: Verifyor Maintainers <noreply@github.com>
 Homepage: https://github.com/nouhailler/verifyor
@@ -12,6 +12,8 @@ Description: Plateforme locale de vérification et d'intelligence email
  Abstract, moteur local DNS/MX/SMTP) et explique pourquoi une adresse est
  valide ou non, grâce à des sous-scores, des signaux techniques et un
  contexte métier exploitable.
+ .
+ Nécessite Node.js 22.5.0+ (node:sqlite natif, introduit en 22.5.0).
  .
  Fonctionnalités principales :
   - Vérification locale DNS/MX + SMTP handshake avancé (sans clé API)

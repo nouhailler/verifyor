@@ -7,7 +7,7 @@
 **Plateforme locale de vérification et d'intelligence email**
 
 [![Version](https://img.shields.io/badge/version-2.0.0-1a2b3c?style=flat-square)](https://github.com/nouhailler/verifyor/releases/latest)
-[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.5-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![License](https://img.shields.io/badge/licence-MIT-006d37?style=flat-square)](LICENSE)
 [![Debian](https://img.shields.io/badge/paquet-.deb-A80030?style=flat-square&logo=debian&logoColor=white)](https://github.com/nouhailler/verifyor/releases/latest)
 
@@ -84,19 +84,26 @@ Rapport complet incluant : synthèse executive · niveau de confiance · drapeau
 
 ## 🚀 Installation rapide
 
+> **⚠️ Prérequis obligatoire : Node.js 22.5+**
+> Verifyor utilise `node:sqlite`, un module natif disponible uniquement à partir de Node.js 22.5.0.
+> Node.js 18, 20 ou 21 ne suffit pas — voir [INSTALL.md](INSTALL.md) pour vérifier et mettre à jour sans conflit.
+
 ### Via le paquet Debian (recommandé)
 
 ```bash
-# 1. Télécharger le paquet
+# 1. Vérifier / installer Node.js 22 (sans conflit avec une version existante)
+bash <(curl -fsSL https://github.com/nouhailler/verifyor/raw/main/scripts/install-node.sh)
+
+# 2. Télécharger le paquet
 wget https://github.com/nouhailler/verifyor/releases/latest/download/verifyor_2.0.0_all.deb
 
-# 2. Installer
+# 3. Installer
 sudo dpkg -i verifyor_2.0.0_all.deb
 
-# 3. Configurer vos clés API (optionnel)
+# 4. Configurer vos clés API (optionnel)
 sudo nano /opt/verifyor/.env
 
-# 4. Lancer
+# 5. Lancer
 verifyor
 ```
 

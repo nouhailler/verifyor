@@ -119,6 +119,26 @@ cp .env.example .env
 npm start
 ```
 
+## PWA Netlify sans backend
+
+Une version PWA statique peut être construite pour Netlify :
+
+```bash
+npm run build:netlify
+```
+
+Netlify utilise `netlify.toml` et publie uniquement `dist/netlify`.
+
+Cette version ne déploie aucune Netlify Function et ne persiste rien dans le cloud. Les recherches et annotations sont conservées uniquement dans le `localStorage` du navigateur.
+
+Limites du mode PWA statique :
+
+- SMTP sur le port 25 désactivé ;
+- pas de base SQLite ou cloud ;
+- pas de ZeroBounce, Abstract, Hunter ou Gravatar côté serveur ;
+- pas de résolution DNS/MX serveur depuis le navigateur ;
+- export PDF remplacé par un export JSON local sans backend.
+
 ---
 
 ## ⚙️ Configuration

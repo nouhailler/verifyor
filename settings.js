@@ -53,6 +53,9 @@
     const response = await fetch("/api/settings", {
       headers: { Accept: "application/json" }
     });
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+      throw new Error("API serveur indisponible.");
+    }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(payload.error || "Impossible de charger la configuration.");
@@ -81,6 +84,9 @@
           gravatar_api_key: elements.gravatarKeyInput.value
         })
       });
+      if (!response.headers.get("content-type")?.includes("application/json")) {
+        throw new Error("API serveur indisponible.");
+      }
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(payload.error || "Impossible d'enregistrer la configuration.");
@@ -88,7 +94,15 @@
 
       setStatus("warning", payload.message || "Configuration enregistree. Redemarrage requis.");
     } catch (error) {
-      setStatus("error", error.message);
+      window.localStorage.setItem("verifyor.localSettings.v1", JSON.stringify({
+        port: elements.portInput.value,
+        default_provider: elements.defaultProviderInput.value
+      }));
+      elements.zerobounceKeyInput.value = "";
+      elements.abstractKeyInput.value = "";
+      elements.hunterKeyInput.value = "";
+      elements.gravatarKeyInput.value = "";
+      setStatus("success", "Mode PWA statique: preferences locales enregistrees dans ce navigateur. Les cles API ne sont pas stockees.");
     } finally {
       elements.saveButton.disabled = false;
     }
@@ -108,7 +122,20 @@
       renderRuntime(settings.runtime || {});
       setStatus("success", "Configuration chargee. Toute modification necessitera un redemarrage de l'application.");
     } catch (error) {
-      setStatus("error", error.message);
+      const localSettings = JSON.parse(window.localStorage.getItem("verifyor.localSettings.v1") || "{}");
+      elements.portInput.value = localSettings.port || "";
+      elements.defaultProviderInput.value = localSettings.default_provider || "auto";
+      elements.zerobounceKeyInput.value = "";
+      elements.abstractKeyInput.value = "";
+      elements.hunterKeyInput.value = "";
+      elements.gravatarKeyInput.value = "";
+      renderRuntime({
+        "pwa-static": {
+          ok: true,
+          last_error: "Netlify sans fonctions: aucune cle API n'est enregistree dans le cloud, SMTP port 25 desactive, stockage localStorage uniquement."
+        }
+      });
+      setStatus("success", "Mode PWA statique: configuration locale du navigateur uniquement. Les cles API serveur sont desactivees.");
     }
   }
 

@@ -83,6 +83,136 @@
     return emailRegex().test(email);
   }
 
+  function localStore() {
+    return window.VerifyorLocalStore || null;
+  }
+
+  function getEmailParts(email) {
+    const [localPart, domain = ""] = email.split("@");
+    return {
+      localPart: localPart || "",
+      domain: domain || ""
+    };
+  }
+
+  function inferName(email) {
+    const { localPart } = getEmailParts(email);
+    const tokens = localPart
+      .replace(/[._-]+/g, " ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .filter((token) => !/^\d+$/.test(token));
+
+    if (!tokens.length) return "Unknown user";
+
+    return tokens
+      .slice(0, 2)
+      .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+      .join(" ");
+  }
+
+  function getTypoSuggestion(email) {
+    const commonTypos = {
+      "gmai.com": "gmail.com",
+      "gmial.com": "gmail.com",
+      "gmail.con": "gmail.com",
+      "hotmial.com": "hotmail.com",
+      "hotmai.com": "hotmail.com",
+      "outlok.com": "outlook.com",
+      "outloo.com": "outlook.com",
+      "yaho.com": "yahoo.com",
+      "yahoo.con": "yahoo.com"
+    };
+    const { localPart, domain } = getEmailParts(email);
+    return commonTypos[domain] ? `${localPart}@${commonTypos[domain]}` : "";
+  }
+
+  function buildBrowserLocalResult(email, requestedProvider) {
+    const { localPart, domain } = getEmailParts(email);
+    const freeDomains = new Set(["gmail.com", "outlook.com", "hotmail.com", "live.com", "yahoo.com", "icloud.com", "proton.me", "protonmail.com"]);
+    const disposableDomains = new Set(["mailinator.com", "10minutemail.com", "tempmail.com", "guerrillamail.com", "yopmail.com"]);
+    const roleNames = new Set(["admin", "contact", "hello", "info", "support", "sales", "billing", "office", "team"]);
+    const suggestion = getTypoSuggestion(email);
+    const disposable = disposableDomains.has(domain);
+    const role = roleNames.has(localPart);
+    const freeEmail = freeDomains.has(domain);
+    const domainLooksUsable = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(domain);
+    const score = Math.max(20, Math.min(86, 58 + (domainLooksUsable ? 14 : -20) + (freeEmail ? 4 : 10) - (role ? 8 : 0) - (disposable ? 45 : 0) - (suggestion ? 12 : 0)));
+    const risk = disposable || !domainLooksUsable ? "high" : role || suggestion || score < 70 ? "medium" : "low";
+    const fullName = inferName(email);
+    const [firstname = "", lastname = ""] = fullName === "Unknown user" ? ["", ""] : fullName.split(" ");
+
+    return {
+      analysis_id: `local-${Date.now()}`,
+      email,
+      firstname,
+      lastname: lastname || "",
+      full_name: fullName,
+      status: disposable || !domainLooksUsable ? "invalid" : "valid",
+      sub_status: "browser_local_no_smtp",
+      domain,
+      syntax: true,
+      mx: false,
+      smtp: false,
+      role,
+      disposable,
+      toxic: disposable,
+      free_email: freeEmail,
+      cached: false,
+      quality_score: score,
+      quality_score_raw: score,
+      score,
+      computedScore: score,
+      risk,
+      risk_level: risk,
+      deliverability: disposable ? "undeliverable" : "unknown",
+      deliverabilityDetail: "Mode PWA statique: DNS, MX et SMTP non interroges depuis le navigateur.",
+      email_type: freeEmail ? "personal" : "professional",
+      verification_provider: "browser-local",
+      verification_method: "browser_heuristic",
+      requested_provider: requestedProvider,
+      is_local_fallback: true,
+      provider_type: freeEmail ? "free" : "business",
+      company_domain: freeEmail ? "" : domain,
+      domain_age_estimate: "non verifie en mode PWA statique",
+      did_you_mean: suggestion,
+      suggestion,
+      mx_found: false,
+      smtp_valid: false,
+      mx_record: "",
+      mxRecords: [],
+      catch_all_probable: false,
+      confidence_level: risk === "low" ? "medium confidence" : "low confidence",
+      score_source: "browser-local",
+      provider_message: "Mode PWA Netlify sans backend: aucune cle API, aucune base cloud, aucun SMTP port 25, aucun appel DNS/MX serveur. Resultat stocke uniquement dans le localStorage du navigateur.",
+      domain_diagnostics: {
+        issues: ["smtp_handshake_disabled", "dns_mx_server_lookup_disabled", "cloud_persistence_disabled"],
+        security_posture: {
+          spf: "not_checked",
+          dkim: "not_checked",
+          dmarc: "not_checked",
+          bimi: "not_checked",
+          mta_sts: "not_checked",
+          tls_rpt: "not_checked"
+        }
+      },
+      score_breakdown: {
+        deliverability: disposable ? 20 : 55,
+        fraud_risk: risk === "high" ? 25 : risk === "medium" ? 55 : 80,
+        identity_confidence: fullName === "Unknown user" ? 45 : 68,
+        domain_trust: freeEmail ? 60 : 68
+      },
+      explanation_lines: [
+        "Analyse executee dans le navigateur.",
+        "SMTP handshake port 25 desactive.",
+        "Aucune persistance cloud; stockage localStorage uniquement."
+      ],
+      created_at: new Date().toISOString(),
+      tags: [],
+      note_text: ""
+    };
+  }
+
   function classForLevel(level) {
     if (level === "high") return "high";
     if (level === "medium") return "medium";
@@ -823,20 +953,37 @@
 
   async function verifyEmail(email) {
     const provider = elements.providerSelect.value || "auto";
-    const response = await fetch(`/api/verify?email=${encodeURIComponent(email)}&provider=${encodeURIComponent(provider)}`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json"
+    try {
+      const response = await fetch(`/api/verify?email=${encodeURIComponent(email)}&provider=${encodeURIComponent(provider)}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json"
+        }
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.details || payload.error || "La verification a echoue.");
       }
-    });
+      if (!payload.email) {
+        throw new Error("API Verifyor indisponible en mode statique.");
+      }
 
-    const payload = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(payload.details || payload.error || "La verification a echoue.");
+      return payload;
+    } catch (error) {
+      const result = buildBrowserLocalResult(email, provider);
+      const store = localStore();
+      if (store) {
+        const saved = store.saveAnalysis(result);
+        return {
+          ...result,
+          analysis_id: saved.id,
+          id: saved.id
+        };
+      }
+      return result;
     }
-
-    return payload;
   }
 
   async function loadProviders() {
@@ -846,6 +993,7 @@
           Accept: "application/json"
         }
       });
+      if (!response.headers.get("content-type")?.includes("application/json")) return;
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) return;
       if (payload.default_provider) {
@@ -863,6 +1011,7 @@
           Accept: "application/json"
         }
       });
+      if (!response.headers.get("content-type")?.includes("application/json")) return;
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) return;
       state.settings = payload;
@@ -873,33 +1022,49 @@
   }
 
   async function fetchRecentAnalyses() {
-    const response = await fetch("/api/analyses?limit=5", {
-      headers: {
-        Accept: "application/json"
+    try {
+      const response = await fetch("/api/analyses?limit=5", {
+        headers: {
+          Accept: "application/json"
+        }
+      });
+
+      if (!response.headers.get("content-type")?.includes("application/json")) {
+        throw new Error("API serveur indisponible.");
       }
-    });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "Impossible de charger les analyses recentes.");
+      }
 
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(payload.error || "Impossible de charger les analyses recentes.");
+      return payload.items || [];
+    } catch (error) {
+      const store = localStore();
+      return store ? store.list(5) : [];
     }
-
-    return payload.items || [];
   }
 
   async function fetchDashboardSummary() {
-    const response = await fetch("/api/dashboard/summary", {
-      headers: {
-        Accept: "application/json"
+    try {
+      const response = await fetch("/api/dashboard/summary", {
+        headers: {
+          Accept: "application/json"
+        }
+      });
+
+      if (!response.headers.get("content-type")?.includes("application/json")) {
+        throw new Error("API serveur indisponible.");
       }
-    });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "Impossible de charger le resume dashboard.");
+      }
 
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(payload.error || "Impossible de charger le resume dashboard.");
+      return payload;
+    } catch (error) {
+      const store = localStore();
+      return store ? store.summary() : {};
     }
-
-    return payload;
   }
 
   async function refreshDashboardSnapshot() {
@@ -919,62 +1084,96 @@
   }
 
   async function requestPdfReport(result) {
-    const response = await fetch("/api/report/pdf", {
-      method: "POST",
-      headers: {
-        Accept: "application/pdf",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(result)
-    });
+    try {
+      const response = await fetch("/api/report/pdf", {
+        method: "POST",
+        headers: {
+          Accept: "application/pdf",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(result)
+      });
 
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.details || payload.error || "La generation du PDF a echoue.");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.details || payload.error || "La generation du PDF a echoue.");
+      }
+
+      if (!response.headers.get("content-type")?.includes("application/pdf")) {
+        throw new Error("Export PDF serveur indisponible en mode statique.");
+      }
+
+      return {
+        blob: await response.blob(),
+        filename: filenameFromDisposition(response.headers.get("content-disposition"))
+      };
+    } catch (error) {
+      return {
+        blob: new Blob([JSON.stringify(result, null, 2)], { type: "application/json" }),
+        filename: `verifyor-${result.email || "rapport"}-local.json`
+      };
     }
-
-    return {
-      blob: await response.blob(),
-      filename: filenameFromDisposition(response.headers.get("content-disposition"))
-    };
   }
 
   async function postIntelligence(endpoint, email, currentResult) {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        email,
-        currentResult
-      })
-    });
+    let response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email,
+          currentResult
+        })
+      });
+    } catch (error) {
+      throw new Error("Module d'intelligence desactive en mode PWA statique sans backend.");
+    }
 
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(payload.details || payload.error || "Le chargement d'intelligence a echoue.");
+    }
+    if (!payload.email && !payload.company && !payload.public_profile && !payload.linkedin_url) {
+      throw new Error("Module d'intelligence desactive en mode PWA statique sans backend.");
     }
 
     return payload;
   }
 
   async function saveAnnotations(analysisId, payload) {
-    const response = await fetch(`/api/admin/analyses/${encodeURIComponent(analysisId)}/annotations`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
+    try {
+      const response = await fetch(`/api/admin/analyses/${encodeURIComponent(analysisId)}/annotations`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
 
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(body.error || "Impossible d'enregistrer les annotations.");
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || "Impossible d'enregistrer les annotations.");
+      }
+      if (!Array.isArray(body.tags) && typeof body.note_text !== "string") {
+        throw new Error("API annotations indisponible en mode statique.");
+      }
+      return body;
+    } catch (error) {
+      const store = localStore();
+      const saved = store ? store.updateAnnotations(analysisId, payload) : null;
+      if (!saved) {
+        throw new Error("Impossible d'enregistrer les annotations locales.");
+      }
+      return {
+        note_text: saved.note_text,
+        tags: saved.tags
+      };
     }
-    return body;
   }
 
   function downloadBlob(blob, filename) {

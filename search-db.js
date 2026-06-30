@@ -171,6 +171,9 @@
         Accept: "application/json"
       }
     });
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+      throw new Error("API serveur indisponible.");
+    }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(payload.error || "Chargement impossible.");
@@ -443,9 +446,34 @@
       renderDetail(analysis);
       setStatus("success", `Detail de la recherche #${id} charge.`);
     } catch (error) {
-      expandedAnalysisId = null;
-      renderDetail(null);
-      setStatus("error", error.message);
+      const store = window.VerifyorLocalStore;
+      const analysis = store ? store.getById(id) : null;
+      if (!analysis) {
+        expandedAnalysisId = null;
+        renderDetail(null);
+        setStatus("error", error.message);
+        return;
+      }
+
+      const currentInline = elements.resultsList.querySelector(".inline-search-detail");
+      if (currentInline) {
+        currentInline.remove();
+      }
+
+      if (expandedAnalysisId === String(id)) {
+        expandedAnalysisId = null;
+        renderDetail(null);
+        setStatus("success", `Detail local de la recherche #${id} masque.`);
+        return;
+      }
+
+      const detailContainer = document.createElement("div");
+      detailContainer.className = "inline-search-detail";
+      detailContainer.innerHTML = buildDetailTable(analysis);
+      triggerButton.insertAdjacentElement("afterend", detailContainer);
+      expandedAnalysisId = String(id);
+      renderDetail(analysis);
+      setStatus("success", `Detail local de la recherche #${id} charge depuis ce navigateur.`);
     }
   }
 
@@ -505,6 +533,16 @@
       elements.resultsList.innerHTML = `<p class="insight-empty">${escapeHtml(error.message)}</p>`;
       renderDetail(null);
       setStatus("error", error.message);
+      const store = window.VerifyorLocalStore;
+      if (store) {
+        const result = store.search(params);
+        const items = result.items || [];
+        elements.count.textContent = String(result.count || 0);
+        elements.lastActivity.textContent = items[0] ? formatDateTime(items[0].created_at) : "-";
+        elements.summary.textContent = `${result.count || 0} resultat(s) dans le localStorage de ce navigateur.`;
+        renderResults(items);
+        setStatus("success", "Mode PWA statique: recherche locale dans ce navigateur uniquement.");
+      }
     }
   }
 

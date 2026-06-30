@@ -6,6 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "icons:pwa": "node scripts/generate-pwa-icons.js",
+    "build:netlify": "node scripts/build-netlify.js",
     "test": "node --test"
   },
   "dependencies": {

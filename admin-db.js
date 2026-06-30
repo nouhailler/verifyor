@@ -41,6 +41,9 @@
         Accept: "application/json"
       }
     });
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+      throw new Error("API serveur indisponible.");
+    }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(payload.error || "Chargement impossible.");
@@ -120,6 +123,13 @@
       renderAnalysisDetail(analysis);
       setStatus("success", `Detail de la recherche #${id} charge.`);
     } catch (error) {
+      const store = window.VerifyorLocalStore;
+      const analysis = store ? store.getById(id) : null;
+      if (analysis) {
+        renderAnalysisDetail(analysis);
+        setStatus("success", `Detail local de la recherche #${id} charge depuis ce navigateur.`);
+        return;
+      }
       setStatus("error", error.message);
       elements.analysisDetail.innerHTML = `<p class="insight-empty">${escapeHtml(error.message)}</p>`;
     }
@@ -189,9 +199,16 @@
       renderAnalysisDetail(null);
       setStatus("success", "Base chargee avec succes.");
     } catch (error) {
-      setStatus("error", error.message);
-      elements.analysesList.innerHTML = `<p class="insight-empty">${escapeHtml(error.message)}</p>`;
-      elements.enrichmentsList.innerHTML = "";
+      const store = window.VerifyorLocalStore;
+      const analyses = store ? store.list(100) : [];
+      const summary = store ? store.summary() : {};
+      elements.analysesCount.textContent = String(analyses.length);
+      elements.enrichmentsCount.textContent = "0";
+      elements.lastActivity.textContent = formatDateTime(summary.last_activity);
+      renderAnalyses(analyses);
+      renderEnrichments([]);
+      renderAnalysisDetail(null);
+      setStatus("success", "Mode PWA statique: historique lu uniquement depuis le localStorage de ce navigateur.");
     }
   }
 
